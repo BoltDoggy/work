@@ -467,9 +467,9 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let repo_path = temp_dir.path();
 
-        // 初始化 Git 仓库
+        // 初始化 Git 仓库并设置默认分支为 main
         Command::new("git")
-            .args(["init"])
+            .args(["init", "-b", "main"])
             .current_dir(repo_path)
             .output()
             .unwrap();
@@ -490,12 +490,6 @@ mod tests {
             .unwrap();
 
         // 创建初始提交
-        Command::new("git")
-            .args(["checkout", "-b", "main"])
-            .current_dir(repo_path)
-            .output()
-            .unwrap();
-
         std::fs::write(repo_path.join("test.txt"), "test content").unwrap();
         Command::new("git")
             .args(["add", "test.txt"])
