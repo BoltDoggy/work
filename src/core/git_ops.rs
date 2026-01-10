@@ -366,40 +366,37 @@ impl WorktreeData {
         ))
     }
 
-    /// 从路径推断 worktree 名称
+    /// 从路径推断 worktree 名称（基于目录名，不是分支名）
     fn derive_worktree_name(&self) -> String {
-        // 尝试从路径中提取 worktree 名称
-        // 通常 worktree 路径类似于: /path/to/repo/.git/worktrees/<name>
-        // 或者主 worktree 在: /path/to/repo
         let path = Path::new(&self.path);
 
-        // 检查是否为 worktrees 目录中的链接
+        // 检查是否在 .worktrees 目录中
         if let Some(parent) = path.parent() {
-            if parent.ends_with(".git/worktrees") {
-                if let Some(name) = path.file_name() {
-                    return name.to_string_lossy().to_string();
+            if let Some(dir_name) = parent.file_name() {
+                let dir_name_str = dir_name.to_string_lossy();
+                if dir_name_str.ends_with(".worktrees") {
+                    // 在 worktrees 目录中，使用当前目录名作为 worktree 名称
+                    if let Some(name) = path.file_name() {
+                        return name.to_string_lossy().to_string();
+                    }
                 }
             }
         }
 
-        // 检查是否在主仓库的 worktrees 子目录
-        // 例如: /path/to/repo/worktrees/feature-branch
-        if let Some(parent) = path.parent() {
-            if parent.file_name().map_or(false, |n| n == "worktrees") {
-                if let Some(name) = path.file_name() {
-                    return name.to_string_lossy().to_string();
-                }
+        // 检查是否在主仓库中（不包含 .worktrees）
+        if !self.path.contains(".worktrees") {
+            // 主仓库，使用目录名
+            if let Some(name) = path.file_name() {
+                return name.to_string_lossy().to_string();
             }
         }
 
-        // 默认使用分支名作为 worktree 名称
-        if self.branch != "HEAD" {
-            return self.branch.clone();
+        // 兜底：使用路径的最后一部分
+        if let Some(name) = path.file_name() {
+            name.to_string_lossy().to_string()
+        } else {
+            "unknown".to_string()
         }
-
-        // 如果是主 worktree（路径不是 worktrees 子目录）
-        // 使用 "main" 作为默认名称
-        "main".to_string()
     }
 
     /// 获取 worktree 的上游分支

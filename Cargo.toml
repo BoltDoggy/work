@@ -39,6 +39,9 @@ chrono = { version = "0.4", features = ["serde"] }
 # 交互式输入（可选）
 dialoguer = "0.11"
 
+# 颜色输出
+colored = "2.1"
+
 [dev-dependencies]
 # 临时目录和文件
 tempfile = "3.10"

@@ -11,6 +11,7 @@ use cli::output::{OutputFormat, format_worktree_table, format_worktree_compact, 
 use core::git_ops::{list_worktrees, create_worktree, create_worktree_with_new_branch, delete_worktree, branch_exists, prune_worktrees, get_worktree_status};
 use dialoguer::{theme::ColorfulTheme, Select, Confirm};
 use std::path::Path;
+use colored::Colorize;
 
 /// 一个简化的 Git worktree 管理工具
 #[derive(Parser, Debug)]
@@ -250,18 +251,25 @@ fn create_command_handler(name: &str, branch: Option<&str>, path: Option<&str>, 
             return Err(anyhow::anyhow!("Branch '{}' does not exist", base));
         }
         create_worktree(&base, &worktree_path)?;
-        println!("Created worktree '{}' from branch '{}'", name, base);
+        println!("{} {} from branch {}",
+            "Created worktree".green().bold(),
+            name.cyan().bold(),
+            base.yellow()
+        );
     } else {
         // 创建新分支
         let upstream = branch.map(|b| b.to_string());
         create_worktree_with_new_branch(name, &worktree_path, upstream.as_deref())?;
-        println!("Created worktree '{}' with new branch", name);
+        println!("{} {} with new branch",
+            "Created worktree".green().bold(),
+            name.cyan().bold()
+        );
     }
 
-    println!("Path: {}", worktree_path);
-    println!("\nSwitch to this worktree:");
-    println!("  cd {}", worktree_path);
-    println!("  or: eval \"$(work switch {} --print-path)\"", name);
+    println!("\n{}: {}", "Path".bold(), worktree_path.dimmed());
+    println!("\n{}:", "Switch to this worktree".green());
+    println!("  {}", format!("cd {}", worktree_path).dimmed());
+    println!("  {}", format!("eval \"$(work switch {} --print-path)\"", name).dimmed());
 
     Ok(())
 }
@@ -328,7 +336,7 @@ fn delete_command_handler(names: &[String], force: bool, interactive: bool) -> R
 
         // 执行删除
         delete_worktree(&worktree.path, force)?;
-        println!("Deleted worktree '{}'", name);
+        println!("{} {}", "Deleted worktree".red().bold(), name.cyan());
     }
 
     Ok(())
@@ -343,32 +351,42 @@ fn info_command_handler(name: &str, _output_format: &str) -> Result<()> {
         .find(|wt| wt.name == name)
         .ok_or_else(|| anyhow::anyhow!("Worktree '{}' not found", name))?;
 
-    println!("{}", cli::output::format_worktree_info(worktree));
+    // 输出带颜色的基本信息
+    println!("{}: {}", "Worktree".bold().green(), worktree.name.cyan().bold());
+    println!("  {}: {}", "Branch".bold(), worktree.branch.yellow());
+    println!("  {}: {}", "Path".bold(), worktree.path.dimmed());
+    println!("  {}: {}", "HEAD".bold(), worktree.head_commit.as_ref().unwrap_or(&"N/A".to_string()).dimmed());
+    println!("  {}: {}", "Current".bold(), if worktree.is_current { "Yes".green() } else { "No".dimmed() });
+    println!("  {}: {}", "Detached".bold(), if worktree.is_detached { "Yes".yellow() } else { "No".dimmed() });
+    if let Some(upstream) = &worktree.upstream_branch {
+        println!("  {}: {}", "Upstream".bold(), upstream.cyan());
+    }
+    println!("  {}: {}", "Last Modified".bold(), worktree.last_modified.format("%Y-%m-%d %H:%M:%S").to_string().dimmed());
 
     // 显示未提交的更改
     let path = Path::new(&worktree.path);
     if let Ok(status) = get_worktree_status(path) {
         if !status.modified.is_empty() || !status.staged.is_empty() || !status.untracked.is_empty() {
-            println!("\n未提交的更改:");
+            println!("\n{}:", "Uncommitted Changes".red().bold());
 
             if !status.staged.is_empty() {
-                println!("  已暂存:");
-                for file in status.staged {
-                    println!("    ✓ {}", file);
+                println!("  {}:", "Staged".green());
+                for file in &status.staged {
+                    println!("    {} {}", "✓".green(), file.dimmed());
                 }
             }
 
             if !status.modified.is_empty() {
-                println!("  已修改:");
-                for file in status.modified {
-                    println!("    M {}", file);
+                println!("  {}:", "Modified".yellow());
+                for file in &status.modified {
+                    println!("    {} {}", "M".yellow(), file.dimmed());
                 }
             }
 
             if !status.untracked.is_empty() {
-                println!("  未跟踪:");
-                for file in status.untracked {
-                    println!("    ? {}", file);
+                println!("  {}:", "Untracked".dimmed());
+                for file in &status.untracked {
+                    println!("    {} {}", "?".dimmed(), file.dimmed());
                 }
             }
         }
@@ -382,16 +400,16 @@ fn prune_command_handler(dry_run: bool) -> Result<()> {
     let pruned = prune_worktrees(dry_run)?;
 
     if pruned.is_empty() {
-        println!("没有需要清理的无效 worktree");
+        println!("{}", "没有需要清理的无效 worktree".dimmed());
     } else {
         if dry_run {
-            println!("预览模式 - 将要清理的无效 worktree:");
+            println!("{}:", "预览模式 - 将要清理的无效 worktree".yellow());
         } else {
-            println!("已清理以下无效 worktree:");
+            println!("{}:", "已清理以下无效 worktree".green());
         }
 
-        for item in pruned {
-            println!("  {}", item);
+        for item in &pruned {
+            println!("  {}", item.dimmed());
         }
     }
 

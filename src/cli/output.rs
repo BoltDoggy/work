@@ -1,5 +1,6 @@
 use comfy_table::{Table, Cell, Color};
 use serde::{Deserialize, Serialize};
+use colored::Colorize;
 
 /// 输出格式枚举
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -52,15 +53,43 @@ pub fn format_worktree_compact(worktrees: Vec<crate::core::worktree::Worktree>) 
     let mut output = String::new();
 
     for wt in worktrees {
-        let current_marker = if wt.is_current { "*" } else { " " };
+        // 判断是否为主目录（不在 .worktrees 中）
+        let is_main = !wt.path.contains(".worktrees");
+
+        // 当前标记：绿色
+        let current_marker = if wt.is_current {
+            "*".green().to_string()
+        } else {
+            " ".normal().to_string()
+        };
+
+        // 主目录标记：紫色粗体
+        let main_marker = if is_main {
+            format!("{} ", "⌂".bold().purple())  // 屋顶符号表示主目录
+        } else {
+            String::new()
+        };
+
+        // worktree 名称（目录名）：主目录用紫色，其他用青色
+        let name = if is_main {
+            wt.name.purple().bold().to_string()
+        } else {
+            wt.name.cyan().to_string()
+        };
+
+        // 当前分支：黄色（如果与目录名不同）
+        let branch_info = if wt.branch != wt.name && wt.branch != "HEAD" {
+            format!(" on {}", wt.branch.yellow())
+        } else if wt.is_detached {
+            format!(" on {}", "HEAD".yellow())
+        } else {
+            String::new()
+        };
 
         // 构建状态标记
         let mut status_markers = Vec::new();
-        if wt.is_detached {
-            status_markers.push("detached");
-        }
         if wt.has_uncommitted_changes() {
-            status_markers.push("modified");
+            status_markers.push("modified".red().to_string());
         }
         let status_marker = if status_markers.is_empty() {
             String::new()
@@ -68,13 +97,14 @@ pub fn format_worktree_compact(worktrees: Vec<crate::core::worktree::Worktree>) 
             format!(" ({})", status_markers.join(", "))
         };
 
-        // 使用箭头和简洁格式
+        // 简化显示：目录名 + 分支 + 状态
         output.push_str(&format!(
-            "{} {}{} → {}\n",
+            "{}{} {}{}{}\n",
             current_marker,
-            wt.name,
-            status_marker,
-            wt.path
+            main_marker,
+            name,
+            branch_info,
+            status_marker
         ));
     }
 
