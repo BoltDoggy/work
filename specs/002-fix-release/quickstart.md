@@ -302,10 +302,80 @@ act -j build --matrix target:x86_64-unknown-linux-gnu
 act release
 ```
 
+## 验证结果 (2026-01-10)
+
+### ✅ 测试成功
+
+**测试 tag**: v0.9.0-test
+**测试日期**: 2026-01-10
+**测试结果**: 全部通过 ✅
+
+### 最终实施方案
+
+**问题**: 原计划使用统一命名 `release-artifacts` 导致 409 冲突
+**解决**: 使用带后缀的命名 + pattern 匹配
+
+#### 修改 1: Upload-Artifact（实际实施方案）
+
+```yaml
+- name: Upload tarball/zip
+  uses: actions/upload-artifact@v4
+  with:
+    name: release-artifacts-${{ matrix.asset_name }}  # 带后缀避免冲突
+    path: |
+      ${{ matrix.asset_name }}.*
+    if-no-files-found: error
+```
+
+#### 修改 2: Download-Artifact（实际实施方案）
+
+```yaml
+- name: Download all artifacts
+  uses: actions/download-artifact@v4
+  with:
+    pattern: release-artifacts-*  # 匹配所有平台
+    path: artifacts
+    merge-multiple: true          # 展平目录结构
+```
+
+#### 修改 3: Release Files（实际实施方案）
+
+```yaml
+files: |
+  artifacts/**/*.tar.gz
+  artifacts/**/*.zip
+  artifacts/checksums.txt
+fail_on_unmatched_files: true
+```
+
+### 验证结果
+
+✅ **构建阶段**: 所有 5 个平台成功构建
+✅ **上传阶段**: 无 409 冲突，所有 artifacts 成功上传
+✅ **下载阶段**: merge-multiple 成功展平目录结构
+✅ **Release 创建**: 所有 6 个文件成功上传到 Release Downloads
+✅ **文件完整性**: SHA256 哈希验证通过
+
+### Release 文件列表
+
+1. work-linux-x86_64.tar.gz (935K)
+2. work-linux-aarch64.tar.gz
+3. work-macos-x86_64.tar.gz
+4. work-macos-aarch64.tar.gz
+5. work-windows-x86_64.zip
+6. checksums.txt (466B)
+
+### 关键经验
+
+1. **避免 artifact 命名冲突**: 多个并行 jobs 不能上传同名 artifact
+2. **使用 pattern 匹配**: `pattern: release-artifacts-*` + `merge-multiple: true` 是推荐方式
+3. **递归通配符很重要**: `**/*.tar.gz` 能匹配嵌套目录中的文件
+4. **验证步骤必不可少**: 添加 "Verify artifacts structure" 步骤便于调试
+
 ## 相关资源
 
 - [GitHub Actions 文档](https://docs.github.com/en/actions)
-- [upload-artifact](https://github.com/actions/upload-artifact)
-- [download-artifact](https://github.com/actions/download-artifact)
-- [action-gh-release](https://github.com/softprops/action-gh-release)
+- [upload-artifact@v4](https://github.com/actions/upload-artifact)
+- [download-artifact@v4](https://github.com/actions/download-artifact)
+- [action-gh-release@v1](https://github.com/softprops/action-gh-release)
 - [GitHub CLI](https://cli.github.com/)
