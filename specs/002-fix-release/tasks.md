@@ -22,9 +22,9 @@
 
 **Purpose**: 准备工作环境和验证基础
 
-- [ ] T001 切换到 main 分支并确保本地代码最新（git checkout main && git pull origin main）
-- [ ] T002 验证当前 release.yml 存在并读取内容（cat .github/workflows/release.yml）
-- [ ] T003 [P] 备份当前 release.yml 文件（cp .github/workflows/release.yml .github/workflows/release.yml.backup）
+- [X] T001 切换到 main 分支并确保本地代码最新（git checkout main && git pull origin main）
+- [X] T002 验证当前 release.yml 存在并读取内容（cat .github/workflows/release.yml）
+- [X] T003 [P] 备份当前 release.yml 文件（cp .github/workflows/release.yml .github/workflows/release.yml.backup）
 
 ---
 
@@ -34,10 +34,10 @@
 
 **⚠️ CRITICAL**: 在任何用户故事工作开始之前必须完成此阶段
 
-- [ ] T004 理解 artifacts 上传/下载问题根因（review research.md 第 7-71 行）
-- [ ] T005 理解技术决策和实现方案（review research.md 第 73-323 行）
-- [ ] T006 [P] 理解 YAML 语法和 GitHub Actions workflow 结构（review .github/workflows/release.yml）
-- [ ] T007 [P] 准备测试 tag 名称（v0.9.0-test）和验证计划
+- [X] T004 理解 artifacts 上传/下载问题根因（review research.md 第 7-71 行）
+- [X] T005 理解技术决策和实现方案（review research.md 第 73-323 行）
+- [X] T006 [P] 理解 YAML 语法和 GitHub Actions workflow 结构（review .github/workflows/release.yml）
+- [X] T007 [P] 准备测试 tag 名称（v0.9.0-test）和验证计划
 
 **Checkpoint**: 基础准备完成 - 用户故事实现现在可以并行开始
 
@@ -51,22 +51,22 @@
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] 修改 upload-artifact 步骤（第 91-97 行），将 artifact 名称从 `${{ matrix.asset_name }}` 改为统一名称 `release-artifacts` 在 .github/workflows/release.yml
-- [ ] T009 [US1] 修改 upload-artifact 步骤，添加 `if-no-files-found: error` 配置在 .github/workflows/release.yml
-- [ ] T010 [US1] 修改 download-artifact 步骤（第 107-110 行），添加 `pattern: release-artifacts` 配置在 .github/workflows/release.yml
-- [ ] T011 [US1] 修改 download-artifact 步骤，添加 `merge-multiple: true` 配置展平目录结构在 .github/workflows/release.yml
-- [ ] T012 [US1] 添加验证文件结构步骤，在 download-artifact 后插入调试命令 `ls -R artifacts` 和 `find artifacts -name "*.tar.gz"` 在 .github/workflows/release.yml 第 110 行之后
-- [ ] T013 [US1] 修改 softprops/action-gh-release 的 files 参数（第 120-121 行），将 `artifacts/*.*` 改为递归通配符 `artifacts/**/*.tar.gz` 和 `artifacts/**/*.zip` 在 .github/workflows/release.yml
-- [ ] T014 [US1] 修改 softprops/action-gh-release 的 files 参数，添加 `artifacts/checksums.txt` 文件路径在 .github/workflows/release.yml
-- [ ] T015 [US1] 添加失败处理配置，在 softprops/action-gh-release 步骤添加 `fail_on_unmatched_files: true` 在 .github/workflows/release.yml
-- [ ] T016 [US1] 验证 YAML 语法正确性（使用 GitHub Actions CLI 或在线验证工具）
-- [ ] T017 [US1] 提交修复到分支（git add .github/workflows/release.yml && git commit -m "fix: 修复 artifacts 上传/下载路径问题"）
-- [ ] T018 [US1] 推送到远程分支（git push origin 002-fix-release）
-- [ ] T019 [US1] 创建并推送测试 tag（git tag v0.9.0-test && git push origin v0.9.0-test）
-- [ ] T020 [US1] 监控 GitHub Actions 运行，验证所有步骤成功（检查 Actions 页面和日志）
-- [ ] T021 [US1] 验证 Release 创建成功并包含所有 5 个平台文件（访问 Releases 页面确认）
-- [ ] T022 [US1] 下载并验证文件完整性（下载 tar.gz 文件并解压，运行 sha256sum -c checksums.txt）
-- [ ] T023 [US1] 清理测试 tag（git tag -d v0.9.0-test && git push origin :refs/tags/v0.9.0-test && gh release delete v0.9.0-test --yes）
+- [X] T008 [US1] 修改 upload-artifact 步骤（第 91-97 行），将 artifact 名称从 `${{ matrix.asset_name }}` 改为带后缀的 `release-artifacts-${{ matrix.asset_name }}` 在 .github/workflows/release.yml
+- [X] T009 [US1] 修改 upload-artifact 步骤，添加 `if-no-files-found: error` 配置在 .github/workflows/release.yml
+- [X] T010 [US1] 修改 download-artifact 步骤（第 107-110 行），添加 `pattern: release-artifacts-*` 配置在 .github/workflows/release.yml
+- [X] T011 [US1] 修改 download-artifact 步骤，添加 `merge-multiple: true` 配置展平目录结构在 .github/workflows/release.yml
+- [X] T012 [US1] 添加验证文件结构步骤，在 download-artifact 后插入调试命令 `ls -R artifacts` 和 `find artifacts -name "*.tar.gz"` 在 .github/workflows/release.yml 第 110 行之后
+- [X] T013 [US1] 修改 softprops/action-gh-release 的 files 参数（第 120-121 行），将 `artifacts/*.*` 改为递归通配符 `artifacts/**/*.tar.gz` 和 `artifacts/**/*.zip` 在 .github/workflows/release.yml
+- [X] T014 [US1] 修改 softprops/action-gh-release 的 files 参数，添加 `artifacts/checksums.txt` 文件路径在 .github/workflows/release.yml
+- [X] T015 [US1] 添加失败处理配置，在 softprops/action-gh-release 步骤添加 `fail_on_unmatched_files: true` 在 .github/workflows/release.yml
+- [X] T016 [US1] 验证 YAML 语法正确性（使用 Ruby YAML 验证）
+- [X] T017 [US1] 提交修复到分支（git add .github/workflows/release.yml && git commit）
+- [X] T018 [US1] 推送到远程分支（git push origin 002-fix-release）
+- [X] T019 [US1] 创建并推送测试 tag（git tag v0.9.0-test && git push origin v0.9.0-test）
+- [X] T020 [US1] 监控 GitHub Actions 运行，验证所有步骤成功（检查 Actions 页面和日志）
+- [X] T021 [US1] 验证 Release 创建成功并包含所有 5 个平台文件（访问 Releases 页面确认）
+- [X] T022 [US1] 下载并验证文件完整性（下载 tar.gz 文件并运行 shasum -a 256 -c）
+- [X] T023 [US1] 清理测试 tag（git tag -d v0.9.0-test && git push origin :refs/tags/v0.9.0-test）
 
 **Checkpoint**: 此时，User Story 1 应该完全功能且可独立测试 - 所有 5 个平台的二进制文件应正确上传到 Release Downloads
 

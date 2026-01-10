@@ -281,12 +281,23 @@ pub fn get_worktree_status(path: &Path) -> Result<WorktreeStatusInfo> {
             continue;
         }
 
-        let status = &line[..2];
-        let file_path = line[3..].to_string();
+        // 使用字符迭代器安全地获取前 3 个字符（XY + 空格）
+        let mut chars = line.chars();
+
+        let x_status = chars.next().unwrap_or(' ');
+        let y_status = chars.next().unwrap_or(' ');
+        let space = chars.next().unwrap_or(' ');
+
+        // 跳过不是标准格式行（少于 3 个字符或第 3 个字符不是空格）
+        if space != ' ' {
+            continue;
+        }
+
+        let file_path = chars.as_str().to_string();
 
         // 第一个字符：暂存区状态
         // 第二个字符：工作区状态
-        match status.chars().next().unwrap_or(' ') {
+        match x_status {
             'M' => staged.push(file_path.clone()),
             'A' => staged.push(file_path.clone()),
             'D' => staged.push(file_path.clone()),
@@ -294,13 +305,13 @@ pub fn get_worktree_status(path: &Path) -> Result<WorktreeStatusInfo> {
             _ => {}
         }
 
-        match status.chars().nth(1).unwrap_or(' ') {
+        match y_status {
             'M' => modified.push(file_path.clone()),
             'D' => modified.push(file_path.clone()),
             _ => {}
         }
 
-        if status.starts_with("??") {
+        if x_status == '?' && y_status == '?' {
             untracked.push(file_path);
         }
     }

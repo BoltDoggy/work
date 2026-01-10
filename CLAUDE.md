@@ -605,6 +605,8 @@ Three formats supported (via `-o/--output` flag):
 ## Active Technologies
 - Rust 1.75+ (001-git-worktree-cli)
 - System Git (no persistent storage) (001-git-worktree-cli)
+- YAML (GitHub Actions Workflow) + Bash scripting (002-fix-release)
+- N/A (CI/CD 流程，无持久化存储) (002-fix-release)
 
 ## Recent Changes
 - 001-git-worktree-cli: Added colored output with main directory marker
