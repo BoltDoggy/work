@@ -17,7 +17,7 @@ use colored::Colorize;
 #[derive(Parser, Debug)]
 #[command(name = "work")]
 #[command(author = "BoltDoggy <github@robolt.uu.me>")]
-#[command(version = "0.1.1")]
+#[command(version = "0.1.2")]
 #[command(about = "简化 Git worktree 的管理", long_about = None)]
 struct Args {
     #[command(subcommand)]
