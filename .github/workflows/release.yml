@@ -91,7 +91,7 @@ jobs:
       - name: Upload tarball/zip
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.asset_name }}
+          name: release-artifacts
           path: |
             ${{ matrix.asset_name }}.*
           if-no-files-found: error
@@ -107,7 +107,19 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: release-artifacts
           path: artifacts
+          merge-multiple: true
+
+      - name: Verify artifacts structure
+        run: |
+          echo "Downloaded artifacts:"
+          ls -R artifacts
+          echo "---"
+          echo "Tar.gz files:"
+          find artifacts -name "*.tar.gz"
+          echo "Zip files:"
+          find artifacts -name "*.zip"
 
       - name: Create checksums
         run: |
@@ -118,12 +130,15 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            artifacts/*.*
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+            artifacts/checksums.txt
           body: |
             ## Downloads
             See the assets below for pre-built binaries.
             **Note**: Checksums are available in `checksums.txt`.
           draft: false
           prerelease: false
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
