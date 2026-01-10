@@ -60,7 +60,8 @@ impl Repository {
     /// 计算关联的 worktree 数量
     fn count_worktrees(root_path: &Path) -> Result<usize> {
         let output = Command::new("git")
-            .args(["worktree", "list"])
+            .args(["-C", root_path.to_str().ok_or_else(|| WorktreeError::InvalidPath(root_path.to_string_lossy().to_string()))?,
+                   "worktree", "list"])
             .output()
             .map_err(|e| WorktreeError::GitError(format!("Failed to execute git: {}", e)))?;
 
@@ -74,10 +75,12 @@ impl Repository {
     }
 
     /// 检测仓库的默认分支名
-    fn detect_default_branch(_root_path: &Path) -> Result<String> {
+    fn detect_default_branch(root_path: &Path) -> Result<String> {
+        let root_path_str = root_path.to_str().ok_or_else(|| WorktreeError::InvalidPath(root_path.to_string_lossy().to_string()))?;
+
         // 尝试获取 HEAD 引用
         let output = Command::new("git")
-            .args(["symbolic-ref", "--short", "HEAD"])
+            .args(["-C", root_path_str, "symbolic-ref", "--short", "HEAD"])
             .output();
 
         match output {
@@ -97,7 +100,7 @@ impl Repository {
         for branch_name in common_defaults {
             // 检查分支是否存在
             let output = Command::new("git")
-                .args(["show-ref", "--verify", "--quiet", &format!("refs/heads/{}", branch_name)])
+                .args(["-C", root_path_str, "show-ref", "--verify", "--quiet", &format!("refs/heads/{}", branch_name)])
                 .output();
 
             if output.map(|o| o.status.success()).unwrap_or(false) {

@@ -476,8 +476,42 @@ mod tests {
 
         std::env::set_current_dir(repo_path).unwrap();
 
+        // 配置用户信息（Git 需要）
+        Command::new("git")
+            .args(["config", "user.name", "Test User"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        Command::new("git")
+            .args(["config", "user.email", "test@example.com"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        // 创建初始提交
+        Command::new("git")
+            .args(["checkout", "-b", "main"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        std::fs::write(repo_path.join("test.txt"), "test content").unwrap();
+        Command::new("git")
+            .args(["add", "test.txt"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        Command::new("git")
+            .args(["commit", "-m", "Initial commit"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
         // 获取当前分支
         let branch = get_current_branch();
         assert!(branch.is_ok());
+        assert_eq!(branch.unwrap(), "main");
     }
 }
