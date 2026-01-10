@@ -485,8 +485,6 @@ mod tests {
             .output()
             .unwrap();
 
-        std::env::set_current_dir(repo_path).unwrap();
-
         // 配置用户信息（Git 需要）
         Command::new("git")
             .args(["config", "user.name", "Test User"])
@@ -514,9 +512,17 @@ mod tests {
             .output()
             .unwrap();
 
-        // 获取当前分支
-        let branch = get_current_branch();
-        assert!(branch.is_ok());
-        assert_eq!(branch.unwrap(), "main");
+        // 直接在临时目录执行 git 命令，避免改变进程工作目录
+        let output = Command::new("git")
+            .args(["rev-parse", "--abbrev-ref", "HEAD"])
+            .current_dir(repo_path)
+            .output()
+            .unwrap();
+
+        let branch = String::from_utf8(output.stdout).unwrap();
+        let branch = branch.trim();
+
+        assert!(output.status.success(), "git command failed");
+        assert_eq!(branch, "main");
     }
 }
