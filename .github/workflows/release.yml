@@ -75,9 +75,14 @@ jobs:
 
       - name: Create tarball (Linux/macOS)
         if: matrix.os != 'windows-latest'
+        shell: bash
         run: |
-          tar --posix -c -z -f ${{ matrix.asset_name }}.tar.gz -C target/${{ matrix.target }}/release ${{ matrix.artifact_name }}
+          set -e
+          cd target/${{ matrix.target }}/release
+          tar -czf ../../../${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
+          cd ../..
           ls -lh ${{ matrix.asset_name }}.tar.gz
+          file ${{ matrix.asset_name }}.tar.gz
 
       - name: Create zip (Windows)
         if: matrix.os == 'windows-latest'
@@ -90,8 +95,8 @@ jobs:
         with:
           name: ${{ matrix.asset_name }}
           path: |
-            ${{ matrix.asset_name }}.tar.gz
-            ${{ matrix.asset_name }}.zip
+            ${{ matrix.asset_name }}.*
+          if-no-files-found: error
 
   release:
     name: Create GitHub Release
