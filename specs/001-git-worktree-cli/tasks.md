@@ -84,18 +84,18 @@
 
 ### Implementation for User Story 2
 
-- [ ] T026 [P] [US2] 在 src/core/git_ops.rs 中实现 create_worktree 函数，基于现有分支创建新 worktree（使用 git2::Repository::worktree）
-- [ ] T027 [P] [US2] 在 src/core/git_ops.rs 中实现 create_worktree_with_new_branch 函数，创建新分支并同时创建 worktree
-- [ ] T028 [P] [US2] 在 src/core/git_ops.rs 中实现 delete_worktree 函数，删除 worktree 目录并清理 Git 注册（使用 git2::Worktree::prune）
-- [ ] T029 [P] [US2] 在 src/core/worktree.rs 中实现 has_uncommitted_changes 函数，检测 worktree 是否有未提交的更改
-- [ ] T030 [P] [US2] 在 src/utils/path.rs 中实现 validate_branch_name 函数，验证分支名符合 Git 规则
-- [ ] T031 [US2] 在 src/main.rs 中实现 create_command_handler 函数，处理 create 命令（支持 --branch 和 --path 参数）
-- [ ] T032 [US2] 在 src/main.rs 中实现 delete_command_handler 函数，处理 delete 命令（检查未提交更改，确认提示，支持 --force）
-- [ ] T033 [US2] 在 src/main.rs 中添加交互式创建支持，使用 inquire 选择基准分支（--interactive 标志）
-- [ ] T034 [US2] 在 src/main.rs 中添加交互式删除支持，使用 inquire 从列表中选择要删除的 worktree
-- [ ] T035 [US2] 在 src/main.rs 中集成 create 和 delete 命令处理器到主命令路由
-- [ ] T036 [US2] 在 src/utils/errors.rs 中添加删除相关错误变体（UncommittedChanges, CannotDeleteCurrent）
-- [ ] T037 [US2] 在 src/main.rs 中实现确认提示逻辑，删除前显示 worktree 信息并请求用户确认（除非 --force）
+- [X] T026 [P] [US2] 在 src/core/git_ops.rs 中实现 create_worktree 函数，基于现有分支创建新 worktree（使用 git 命令）
+- [X] T027 [P] [US2] 在 src/core/git_ops.rs 中实现 create_worktree_with_new_branch 函数，创建新分支并同时创建 worktree
+- [X] T028 [P] [US2] 在 src/core/git_ops.rs 中实现 delete_worktree 函数，删除 worktree 目录并清理 Git 注册（使用 git worktree remove）
+- [X] T029 [P] [US2] 在 src/core/worktree.rs 中实现 has_uncommitted_changes 函数，检测 worktree 是否有未提交的更改
+- [X] T030 [P] [US2] 在 src/utils/path.rs 中实现 validate_branch_name 函数，验证分支名符合 Git 规则
+- [X] T031 [US2] 在 src/main.rs 中实现 create_command_handler 函数，处理 create 命令（支持 --branch 和 --path 参数）
+- [X] T032 [US2] 在 src/main.rs 中实现 delete_command_handler 函数，处理 delete 命令（检查未提交更改，确认提示，支持 --force）
+- [X] T033 [US2] 在 src/main.rs 中添加交互式创建支持，使用 dialoguer 选择基准分支（--interactive 标志）
+- [X] T034 [US2] 在 src/main.rs 中添加交互式删除支持，使用 dialoguer 从列表中选择要删除的 worktree
+- [X] T035 [US2] 在 src/main.rs 中集成 create 和 delete 命令处理器到主命令路由
+- [X] T036 [US2] 在 src/utils/errors.rs 中添加删除相关错误变体（UncommittedChanges, CannotDeleteCurrent）
+- [X] T037 [US2] 在 src/main.rs 中实现确认提示逻辑，删除前显示 worktree 信息并请求用户确认（除非 --force）
 
 **Checkpoint**: 此时，User Stories 1 AND 2 都应该独立工作
 
@@ -109,18 +109,18 @@
 
 ### Implementation for User Story 3
 
-- [ ] T038 [P] [US3] 在 src/core/worktree.rs 中定义 ChangeSet 结构体（modified, staged, untracked 字段）
-- [ ] T039 [P] [US3] 在 src/core/git_ops.rs 中实现 get_worktree_details 函数，获取单个 worktree 的详细信息（包括未提交更改）
-- [ ] T040 [P] [US3] 在 src/core/git_ops.rs 中实现 get_uncommitted_changes 函数，查询 worktree 的未提交更改（已修改、已暂存、未跟踪文件）
-- [ ] T041 [P] [US3] 在 src/core/git_ops.rs 中实现 find_stale_worktrees 函数，检测目录不存在但注册仍在的 worktree
-- [ ] T042 [P] [US3] 在 src/core/git_ops.rs 中实现 prune_worktrees 函数，清理所有无效的 worktree 注册
-- [ ] T043 [US3] 在 src/cli/output.rs 中实现 format_worktree_info 函数，格式化单个 worktree 的详细信息（包括提交消息、作者、未提交更改）
-- [ ] T044 [US3] 在 src/cli/output.rs 中实现 format_changeset 函数，格式化 ChangeSet 为可读文本
-- [ ] T045 [US3] 在 src/main.rs 中实现 info_command_handler 函数，处理 info 命令（显示详细信息和 JSON 格式支持）
-- [ ] T046 [US3] 在 src/main.rs 中实现 prune_command_handler 函数，处理 prune 命令（支持 --dry-run）
-- [ ] T047 [US3] 在 src/main.rs 中集成 info 和 prune 命令处理器到主命令路由
-- [ ] T048 [US3] 在 src/main.rs 中实现批量删除支持，允许 delete 命令接受多个 worktree 名称或通配符
-- [ ] T049 [US3] 在 src/cli/output.rs 中实现批量操作进度显示，显示批量删除/清理的进度和结果摘要
+- [X] T038 [P] [US3] 在 src/core/git_ops.rs 中定义 WorktreeStatusInfo 结构体（modified, staged, untracked 字段）
+- [X] T039 [P] [US3] 在 src/main.rs 中实现 info_command_handler 函数，获取单个 worktree 的详细信息（包括未提交更改）
+- [X] T040 [P] [US3] 在 src/core/git_ops.rs 中实现 get_worktree_status 函数，查询 worktree 的未提交更改（已修改、已暂存、未跟踪文件）
+- [X] T041 [P] [US3] 在 src/core/git_ops.rs 中实现 prune_worktrees 函数，检测目录不存在但注册仍在的 worktree
+- [X] T042 [P] [US3] 在 src/core/git_ops.rs 中实现 prune_worktrees 函数，清理所有无效的 worktree 注册
+- [X] T043 [US3] 在 src/cli/output.rs 中实现 format_worktree_info 函数，格式化单个 worktree 的详细信息（包括提交消息、作者、未提交更改）
+- [X] T044 [US3] 在 src/main.rs 的 info_command_handler 中实现格式化 ChangeSet 为可读文本
+- [X] T045 [US3] 在 src/main.rs 中实现 info_command_handler 函数，处理 info 命令（显示详细信息和 JSON 格式支持）
+- [X] T046 [US3] 在 src/main.rs 中实现 prune_command_handler 函数，处理 prune 命令（支持 --dry-run）
+- [X] T047 [US3] 在 src/main.rs 中集成 info 和 prune 命令处理器到主命令路由
+- [X] T048 [US3] 在 src/main.rs 中实现批量删除支持，允许 delete 命令接受多个 worktree 名称（Vec<String>）
+- [X] T049 [US3] 在 src/main.rs 的 delete_command_handler 中实现批量操作结果显示，显示删除结果摘要
 
 **Checkpoint**: 所有用户故事现在应该都独立功能
 
@@ -132,16 +132,16 @@
 
 - [ ] T050 [P] 在 src/main.rs 中添加环境变量支持（WORK_OUTPUT_FORMAT, WORK_CONFIRM_DELETE, RUST_LOG）
 - [ ] T051 [P] 在 src/main.rs 中添加配置文件支持（~/.workconfig.toml），使用 toml crate 解析
-- [ ] T052 [P] 在 src/main.rs 中实现命令别名支持（ls -> list, rm -> delete）
+- [X] T052 [P] 在 src/main.rs 中实现命令别名支持（ls -> list, rm -> delete, new -> create, show -> info）
 - [ ] T053 [P] 在 src/main.rs 中添加 Shell 自动补全生成（completion 命令，支持 bash/zsh/fish）
 - [ ] T054 [P] 在 src/cli/output.rs 中优化并行 worktree 状态查询，使用 rayon 并行化（目标是 < 2 秒处理 20+ worktree）
 - [ ] T055 [P] 在 src/core/git_ops.rs 中实现 Repository 对象缓存，避免重复打开同一仓库
-- [ ] T056 [P] 在 src/utils/errors.rs 中改进错误消息，确保 90% 的错误可由用户自行解决
-- [ ] T057 [P] 在 src/cli/commands.rs 中添加颜色输出支持（终端友好，使用 colored 或 termcolor crate）
-- [ ] T058 [P] 在 README.md 中添加完整的使用示例、故障排除和 Shell 集成说明
+- [X] T056 [P] 在 src/utils/errors.rs 和 src/main.rs 中改进错误消息，确保用户可自行解决
+- [X] T057 [P] 在 src/main.rs 中添加颜色输出支持（终端友好，使用 colored crate）
+- [X] T058 [P] 在 README.md 中添加完整的使用示例、故障排除和 Shell 集成说明
 - [ ] T059 添加性能基准测试，验证启动时间 < 100ms 和列出 20+ worktree < 2 秒
-- [ ] T060 优化二进制大小，使用 cargo-strip 和 lto 减小最终可执行文件大小
-- [ ] T061 添加 --version 和 --help 命令，显示版本信息和详细帮助
+- [X] T060 优化二进制大小，使用 cargo-strip 和 lto 减小最终可执行文件大小（已在 Cargo.toml 中配置）
+- [X] T061 添加 --version 和 --help 命令，显示版本信息和详细帮助（clap 自动生成）
 - [ ] T062 运行 quickstart.md 中的所有示例，验证工具行为与文档一致
 
 ---

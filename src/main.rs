@@ -27,6 +27,7 @@ struct Args {
 #[derive(Subcommand, Debug)]
 enum Commands {
     /// 列出所有 worktree
+    #[command(alias = "ls")]
     List {
         /// 输出格式 (table, compact, json)
         #[arg(short = 'o', long = "output", default_value = "compact")]
@@ -41,6 +42,7 @@ enum Commands {
         print_path: bool,
     },
     /// 创建新的 worktree
+    #[command(alias = "new")]
     Create {
         /// 分支名或 worktree 名称
         name: String,
@@ -55,6 +57,7 @@ enum Commands {
         interactive: bool,
     },
     /// 删除 worktree
+    #[command(alias = "rm")]
     Delete {
         /// Worktree 名称（可指定多个）
         #[arg(required = false)]
@@ -67,6 +70,7 @@ enum Commands {
         interactive: bool,
     },
     /// 显示 worktree 详细信息
+    #[command(alias = "show")]
     Info {
         /// Worktree 名称
         name: String,

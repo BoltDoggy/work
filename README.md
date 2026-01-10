@@ -91,6 +91,17 @@ cargo install --path .
 work --version
 ```
 
+## 命令别名
+
+为了方便使用，所有命令都支持简写别名：
+
+```bash
+work list     # 或 work ls
+work create   # 或 work new
+work delete   # 或 work rm
+work info     # 或 work show
+```
+
 ## 快速开始
 
 ### 列出所有 worktree
@@ -396,6 +407,66 @@ work prune [OPTIONS]
 
 选项：
       --dry-run    预览将要清理的 worktree（不实际删除）
+```
+
+## 故障排除
+
+### "Not in a git repository" 错误
+
+确保当前目录在 Git 仓库内。可以从任意子目录运行 `work` 命令。
+
+### "Cannot delete current worktree" 错误
+
+不能删除当前所在的 worktree。请先切换到其他 worktree 或主目录：
+
+```bash
+# 切换到主目录
+cd /path/to/main/repo
+
+# 然后删除
+work delete feature-auth
+```
+
+### Worktree 目录已存在
+
+如果 worktree 目录存在但 Git 不认识它，手动清理目录后运行：
+
+```bash
+# 清理无效的 worktree 注册
+work prune
+```
+
+### "Branch does not exist" 错误
+
+创建 worktree 时，确保基准分支存在：
+
+```bash
+# 列出所有本地分支
+git branch
+
+# 基于现有分支创建
+work create feature-auth --branch main
+```
+
+### 路径创建失败
+
+如果遇到权限问题，检查目标父目录是否可写：
+
+```bash
+# 使用自定义路径
+work create feature-auth --path ~/worktrees/feature-auth
+```
+
+### 颜色显示异常
+
+如果终端不支持颜色或颜色显示不正确，可以设置环境变量：
+
+```bash
+# 禁用颜色
+export NO_COLOR=1
+
+# 或使用 FORCE_COLOR 强制启用
+export FORCE_COLOR=1
 ```
 
 ## 许可证
