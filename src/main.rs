@@ -16,7 +16,7 @@ use colored::Colorize;
 /// 一个简化的 Git worktree 管理工具
 #[derive(Parser, Debug)]
 #[command(name = "work")]
-#[command(author = "Developer Name <dev@example.com>")]
+#[command(author = "BoltDoggy <github@robolt.uu.me>")]
 #[command(version = "0.1.0")]
 #[command(about = "简化 Git worktree 的管理", long_about = None)]
 struct Args {

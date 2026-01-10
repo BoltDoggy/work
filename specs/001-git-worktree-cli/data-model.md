@@ -83,7 +83,7 @@
   "head_commit": "a1b2c3d4e5f6789012345678901234567890abcd",
   "commit_date": "2026-01-10T14:20:00Z",
   "commit_message": "Add initial worktree support",
-  "author": "Developer Name"
+  "author": "BoltDoggy"
 }
 ```
 

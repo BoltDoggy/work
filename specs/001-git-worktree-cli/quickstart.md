@@ -20,7 +20,7 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/yourusername/work.git
+git clone https://github.com/BoltDoggy/work.git
 cd work
 
 # 编译并安装
@@ -34,7 +34,7 @@ work --version
 
 ```bash
 # Linux
-curl -L https://github.com/yourusername/work/releases/latest/download/work-linux-x86_64.tar.gz | tar xz
+curl -L https://github.com/BoltDoggy/work/releases/latest/download/work-linux-x86_64.tar.gz | tar xz
 sudo mv work /usr/local/bin/
 
 # macOS
@@ -186,7 +186,7 @@ Worktree: feature-auth
   Branch: feature-auth
   Path: /home/user/project/worktrees/feature-auth
   HEAD: a1b2c3d4e5f6789012345678901234567890abcd
-  Author: Developer <dev@example.com>
+  Author: BoltDoggy <github@robolt.uu.me>
   Date: 2026-01-10 14:30:00 +0000
   Message: Add OAuth2 login support
 

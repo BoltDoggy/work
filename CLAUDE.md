@@ -9,9 +9,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a **SpecKit template repository** - an AI-native, specification-driven development framework. It provides a complete workflow system for building features through natural language specifications, technical planning, task breakdown, and implementation.
+This is **work** - a Git worktree management CLI tool built with Rust. The project follows SpecKit's specification-driven development methodology, demonstrating a complete implementation of the SpecKit workflow from specification to delivery.
 
-The repository is currently a **template with no source code** - it contains only the SpecKit infrastructure for managing the development workflow.
+**Purpose:** Simplify Git worktree management with intuitive commands, colored output, and automatic path management.
+
+**Key Features:**
+- List worktrees with colored, compact output showing current marker (⌂ for main directory, * for current worktree)
+- Create worktrees with automatic path resolution (`<repo-name>.worktrees/<name>`)
+- Delete worktrees with safety checks (uncommitted changes, current worktree protection)
+- Display detailed worktree information (branch, status, uncommitted changes)
+- Prune invalid worktrees
+- Interactive mode for branch/worktree selection
+
+**Architecture:** 3-layer Rust CLI
+- **CLI Layer** (`src/cli/`): Command parsing (clap), output formatting
+- **Core Layer** (`src/core/`): Git operations wrapper, worktree data model
+- **Utils Layer** (`src/utils/`): Error handling, path utilities
+
+**Design Decision:** Uses system `git` commands via `std::process::Command` instead of `git2` crate to avoid OpenSSL dependency.
 
 ## SpecKit Workflow
 
@@ -211,7 +226,7 @@ Converts tasks from `tasks.md` to GitHub issues.
 │       └── speckit.taskstoissues.md
 ├── .specify/                 # Core SpecKit infrastructure
 │   ├── memory/               # Project-wide persistent memory
-│   │   └── constitution.md   # Project constitution (template with placeholders)
+│   │   └── constitution.md   # Project constitution (v1.0.1)
 │   ├── scripts/              # Bash automation scripts
 │   │   └── bash/
 │   │       ├── common.sh                   # Shared utilities
@@ -225,17 +240,50 @@ Converts tasks from `tasks.md` to GitHub issues.
 │       ├── tasks-template.md
 │       ├── checklist-template.md
 │       └── agent-file-template.md
-├── specs/                    # Feature specifications (created as features are added)
-│   └── [###-feature-name]/   # One directory per feature
+├── specs/                    # Feature specifications
+│   └── 001-git-worktree-cli/ # Initial implementation (MVP complete)
 │       ├── spec.md           # Feature specification
 │       ├── plan.md           # Implementation plan
-│       ├── tasks.md          # Task breakdown
-│       ├── research.md       # Technical research (optional)
-│       ├── data-model.md     # Data model definitions (optional)
-│       ├── quickstart.md     # Integration scenarios (optional)
-│       ├── contracts/        # API contracts (optional)
-│       └── checklists/       # Quality checklists (optional)
+│       ├── tasks.md          # Task breakdown (47/62 complete)
+│       ├── research.md       # Technical research
+│       └── IMPLEMENTATION_REPORT.md  # MVP status
+├── src/                      # Rust source code
+│   ├── main.rs               # CLI entry point, command handlers
+│   ├── cli/
+│   │   └── output.rs         # Output formatting (table, compact, JSON)
+│   ├── core/
+│   │   ├── git_ops.rs        # Git command execution wrapper
+│   │   ├── worktree.rs       # Worktree data model
+│   │   └── repository.rs     # Repository management
+│   └── utils/
+│       ├── errors.rs         # Error types and handling
+│       └── path.rs           # Path utilities
+├── Cargo.toml                # Rust project configuration
+├── Cargo.lock                # Dependency lock file
+├── README.md                 # User documentation
 └── CLAUDE.md                 # This file
+```
+
+## Build & Development Commands
+
+```bash
+# Build the project
+cargo build --release
+
+# Install globally (after build)
+cargo install --path .
+
+# Run tests
+cargo test
+
+# Run with debug output
+RUST_LOG=debug cargo run -- list
+
+# Format code
+cargo fmt
+
+# Check lints
+cargo clippy
 ```
 
 ## Bash Scripts
@@ -451,34 +499,114 @@ Scripts will use this instead of git branch detection.
 
 ## Technology Stack
 
-**Current Stack:** Shell Scripts + Markdown
+**Current Stack:** Rust 1.75+ with system Git integration
 
-- **Automation:** Bash scripts (POSIX-compliant)
-- **Documentation:** Markdown for all artifacts
-- **Version Control:** Git (optional but recommended)
-- **AI Integration:** Agent-agnostic (Claude, Copilot, Cursor, etc.)
+- **Language:** Rust 1.75+ (edition 2021)
+- **CLI Framework:** clap 4.5 (derive feature for command parsing)
+- **Error Handling:** anyhow 1.0 (error propagation), thiserror 1.0 (custom error types)
+- **Serialization:** serde 1.0, serde_json 1.0 (JSON output format)
+- **Output Formatting:** comfy-table 7.0 (table display), colored 2.1 (terminal colors)
+- **Logging:** env_logger 0.11, log 0.4
+- **Time Handling:** chrono 0.4 (with serde support)
+- **Interactive UI:** dialoguer 0.11 (interactive prompts)
+- **Testing:** tempfile 3.10, assert_cmd 2.0, predicates 3.1
 
-**Future Stack:** Determined by first feature implementation
+**Git Integration:** System commands via `std::process::Command`
+- Uses `git rev-parse --git-common-dir` to find main repository
+- Executes `git worktree` commands for all worktree operations
+- Avoids `git2` crate dependency (no OpenSSL required)
 
-The technology stack will be defined in the first `plan.md` and automatically update this file via `update-agent-context.sh`.
+**Release Configuration:**
+- Optimizations: opt-level 3, LTO enabled, single codegen unit
+- Binary stripping enabled for minimal size
+- Binary name: `work`
 
 ## Constitution
 
-The project constitution (`.specify/memory/constitution.md`) defines core development principles. Currently a template with placeholder tokens:
+The project constitution (`.specify/memory/constitution.md`, v1.0.1) defines core development principles:
 
-- `[PROJECT_NAME]` - Project name
-- `[PRINCIPLE_1_NAME]` through `[PRINCIPLE_5_NAME]` - Core principles
-- `[SECTION_2_NAME]`, `[SECTION_3_NAME]` - Additional sections
-- `[GOVERNANCE_RULES]` - Governance procedures
-- `[CONSTITUTION_VERSION]` - Version number (MAJOR.MINOR.PATCH)
-- `[RATIFICATION_DATE]` - Original adoption date
-- `[LAST_AMENDED_DATE]` - Last modification date
+### I. 规范优先开发 (Specification-First Development)
+- All features must start with natural language specification (`/speckit.specify`)
+- Separate WHAT (requirements) from HOW (implementation)
+- Technical decisions recorded in planning phase (`/speckit.plan`)
 
-Run `/speckit.constitution` to customize these for your project.
+### II. 独立可交付性 (Independent Deliverability)
+- User stories prioritized (P1, P2, P3)
+- P1 must be independently deliverable as MVP
+- Avoid cross-story dependencies
+
+### III. 质量前置 (Quality Upfront)
+- All specs must pass completeness validation
+- Max 3 [NEEDS CLARIFICATION] markers before planning
+- Encourage TDD (tests fail before implementation)
+
+## Visual Design
+
+**Worktree Display Colors:**
+- Main directory: Purple + bold + ⌂ roof symbol
+- Regular worktrees: Cyan
+- Current worktree: Green * marker
+- Branch name (when different from directory): Yellow
+- Modified status: Red
+- Detached HEAD: Yellow
+
+**Example Output:**
+```
+*⌂  worktree on 001-git-worktree-cli (modified)
+  feature-auth on main
+  feature-bugfix
+```
+
+## Key Implementation Details
+
+### Worktree Path Resolution
+
+When creating a new worktree, the tool uses `git rev-parse --git-common-dir` to find the main repository's `.git` directory. This ensures worktrees are created correctly even when the command is run from within another worktree.
+
+**Path Pattern:** `<parent-dir>/<repo-name>.worktrees/<worktree-name>`
+
+Example: If main repo is at `/Volumes/code/myproject/`, worktrees are created at `/Volumes/code/myproject.worktrees/<name>/`
+
+### Worktree Naming
+
+Worktree names are based on **directory name**, not branch name. This allows:
+- Switching branches within a worktree without changing its identity
+- Clear separation between "where" (directory) and "what" (current branch)
+
+When directory name differs from current branch, output shows: `dirname on branchname`
+
+### Git Operations Pattern
+
+All git operations use `std::process::Command` instead of libgit2:
+```rust
+let output = Command::new("git")
+    .args(["worktree", "list", "--porcelain"])
+    .output()?;
+```
+
+**Benefits:**
+- No OpenSSL dependency (avoids compilation issues)
+- Always uses user's configured git version
+- Simpler error handling via stdout/stderr parsing
+
+### Error Handling Strategy
+
+- **Core layer** (`core/git_ops.rs`): Returns `Result<T>` with custom `WorktreeError` from `utils/errors.rs`
+- **CLI layer** (`main.rs`): Uses `anyhow::Result<T>` for flexible error propagation to user
+- **User-facing errors**: Colored, context-rich error messages
+
+### Output Formatting
+
+Three formats supported (via `-o/--output` flag):
+1. **compact** (default): Simplified, color-coded single line per worktree
+2. **table**: Full table with all columns using comfy-table
+3. **json**: Machine-readable JSON for scripting
 
 ## Active Technologies
 - Rust 1.75+ (001-git-worktree-cli)
-- N/A (工具直接操作 Git worktree，无持久化存储) (001-git-worktree-cli)
+- System Git (no persistent storage) (001-git-worktree-cli)
 
 ## Recent Changes
-- 001-git-worktree-cli: Added Rust 1.75+
+- 001-git-worktree-cli: Added colored output with main directory marker
+- 001-git-worktree-cli: Fixed worktree path resolution using git-common-dir
+- 001-git-worktree-cli: Separated directory name from branch name display
