@@ -2,6 +2,14 @@
 
 一个简化的 Git worktree 管理命令行工具，使 worktree 的使用更加直观和高效。
 
+> **AI 辅助开发声明**：本项目 100% 使用 AI 辅助编程实现，感谢智谱 GLM-4.7 大模型、Claude Code CLI、Zed 编辑器的强大支持！
+
+## 🎁 限时福利：智谱 GLM Coding 超值订阅
+
+🚀 速来拼好模，智谱 GLM Coding 超值订阅，邀你一起薅羊毛！Claude Code、Cline 等 20+ 大编程工具无缝支持，"码力"全开，越拼越爽！立即开拼，享限时惊喜价！
+
+[立即获取 GLM Coding 订阅](https://www.bigmodel.cn/glm-coding?ic=5GEGFP6YBE)
+
 ## 功能特性
 
 - 🎨 **彩色输出**: 清晰的视觉标识，主目录（⌂）、当前 worktree（*）、状态标记
