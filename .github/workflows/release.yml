@@ -78,9 +78,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          cd target/${{ matrix.target }}/release
-          tar -czf ../../../${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
-          cd ../..
+          tar -czf ${{ matrix.asset_name }}.tar.gz -C target/${{ matrix.target }}/release ${{ matrix.artifact_name }}
           ls -lh ${{ matrix.asset_name }}.tar.gz
           file ${{ matrix.asset_name }}.tar.gz
 
