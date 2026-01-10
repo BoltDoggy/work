@@ -1,0 +1,56 @@
+[package]
+name = "work"
+version = "0.1.0"
+edition = "2021"
+description = "A CLI tool to simplify Git worktree management"
+authors = ["Developer Name <dev@example.com>"]
+license = "MIT"
+repository = "https://github.com/yourusername/work"
+readme = "README.md"
+keywords = ["git", "worktree", "cli", "vcs"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "work"
+path = "src/main.rs"
+
+[dependencies]
+# CLI 框架
+clap = { version = "4.5", features = ["derive"] }
+
+# 错误处理
+anyhow = "1.0"
+thiserror = "1.0"
+
+# 序列化
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# 输出格式化
+comfy-table = "7"
+
+# 日志
+env_logger = "0.11"
+log = "0.4"
+
+# 时间处理
+chrono = { version = "0.4", features = ["serde"] }
+
+# 交互式输入（可选）
+dialoguer = "0.11"
+
+[dev-dependencies]
+# 临时目录和文件
+tempfile = "3.10"
+
+# CLI 测试
+assert_cmd = "2.0"
+
+# 断言匹配
+predicates = "3.1"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

@@ -1,0 +1,38 @@
+# Rust
+target/
+debug/
+release/
+*.rs.bk
+*.rlib
+*.rmeta
+*.prof*
+*.dll
+*.exe
+*.so
+*.dylib
+*.a
+*.lib
+
+# Cargo
+Cargo.lock
+
+# Environment
+.env
+.env.*
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Testing
+coverage/
+.nuget/
