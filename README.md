@@ -15,7 +15,69 @@
 
 ## 安装
 
-### 从源码编译
+### 方式一：一键安装脚本（推荐）
+
+适用于 Linux 和 macOS 用户：
+
+```bash
+# 自动检测系统并安装最新版本
+curl -sSL https://raw.githubusercontent.com/BoltDoggy/work/main/install.sh | bash
+
+# 或者指定版本
+VERSION=v0.1.0 curl -sSL https://raw.githubusercontent.com/BoltDoggy/work/main/install.sh | bash
+
+# 或者安装到自定义目录
+INSTALL_DIR=/usr/local/bin curl -sSL https://raw.githubusercontent.com/BoltDoggy/work/main/install.sh | bash
+```
+
+### 方式二：下载预编译二进制文件
+
+从 [GitHub Releases](https://github.com/BoltDoggy/work/releases) 下载对应平台的二进制文件：
+
+**Linux/macOS:**
+```bash
+# 下载并解压
+wget https://github.com/BoltDoggy/work/releases/latest/download/work-linux-x86_64.tar.gz
+tar xzf work-linux-x86_64.tar.gz
+
+# 安装到 PATH
+sudo mv work /usr/local/bin/
+
+# 验证安装
+work --version
+```
+
+**Windows:**
+1. 下载 `work-windows-x86_64.zip`
+2. 解压到任意目录
+3. 将解压目录添加到 PATH
+
+### 方式三：Homebrew（macOS/Linux）
+
+```bash
+# 添加 tap
+brew tap BoltDoggy/work
+
+# 安装
+brew install work
+
+# 更新
+brew upgrade work
+```
+
+### 方式四：Cargo install
+
+如果你已经安装了 Rust 工具链：
+
+```bash
+# 直接从 crates.io 安装（待发布）
+cargo install work-cli
+
+# 或从源码安装
+cargo install --git https://github.com/BoltDoggy/work
+```
+
+### 方式五：从源码编译
 
 ```bash
 # 克隆仓库
