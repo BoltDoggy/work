@@ -33,6 +33,12 @@ pub enum WorktreeError {
 
     #[error("Invalid branch name: {0}")]
     InvalidBranchName(String),
+
+    #[error("Directory name conflict: '{dirname}' already exists for branch '{existing_branch}'")]
+    DirNameConflict {
+        dirname: String,
+        existing_branch: String,
+    },
 }
 
 /// Result 类型别名

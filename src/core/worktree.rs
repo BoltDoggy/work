@@ -6,10 +6,16 @@ use crate::core::git_ops;
 /// Git worktree 的概念表示
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Worktree {
-    /// Worktree 名称（通常基于分支名）
-    pub name: String,
-    /// 分支名
-    pub branch: String,
+    /// Worktree 目录名（分支名中的 / 替换为 -）
+    pub dirname: String,
+    /// Git 分支名（原始名称，可能包含 /）
+    pub branch_name: String,
+    /// Worktree 名称（用于向后兼容，等同于 dirname）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    /// 分支名（用于向后兼容，等同于 branch_name）
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub branch: Option<String>,
     /// Worktree 目录的绝对路径
     pub path: String,
     /// 是否为当前 worktree（shell 所在目录）
@@ -29,8 +35,8 @@ pub struct Worktree {
 impl Worktree {
     /// 创建一个新的 Worktree 实例
     pub fn new(
-        name: String,
-        branch: String,
+        dirname: String,
+        branch_name: String,
         path: String,
         is_current: bool,
         is_bare: bool,
@@ -39,8 +45,10 @@ impl Worktree {
         upstream_branch: Option<String>,
     ) -> Self {
         Worktree {
-            name,
-            branch,
+            dirname: dirname.clone(),
+            branch_name: branch_name.clone(),
+            name: Some(dirname.clone()),
+            branch: Some(branch_name.clone()),
             path,
             is_current,
             is_bare,
@@ -54,6 +62,17 @@ impl Worktree {
     /// 基于当前工作目录查找当前的 worktree
     pub fn find_current_worktree(worktrees: &[Worktree]) -> Option<&Worktree> {
         worktrees.iter().find(|wt| wt.is_current)
+    }
+
+    /// 获取显示名称（用于输出）
+    /// 如果目录名和分支名不同，返回 "dirname on branch" 格式
+    /// 如果相同，只返回目录名
+    pub fn display_name(&self) -> String {
+        if self.dirname == self.branch_name {
+            self.dirname.clone()
+        } else {
+            format!("{} on {}", self.dirname, self.branch_name)
+        }
     }
 
     /// 检查 worktree 是否有未提交的更改
@@ -106,8 +125,8 @@ mod tests {
             Some("origin/feature-auth".to_string()),
         );
 
-        assert_eq!(worktree.name, "feature-auth");
-        assert_eq!(worktree.branch, "feature-auth");
+        assert_eq!(worktree.dirname, "feature-auth");
+        assert_eq!(worktree.branch_name, "feature-auth");
         assert_eq!(worktree.is_current, false);
         assert_eq!(worktree.head_commit, Some("abc123".to_string()));
     }
@@ -139,7 +158,7 @@ mod tests {
 
         let current = Worktree::find_current_worktree(&worktrees);
         assert!(current.is_some());
-        assert_eq!(current.unwrap().name, "main");
+        assert_eq!(current.unwrap().dirname, "main");
     }
 
     #[test]
@@ -174,5 +193,53 @@ mod tests {
 
         let status = worktree.get_status();
         assert_eq!(status, WorktreeStatus::Detached);
+    }
+
+    #[test]
+    fn test_display_name_no_slash() {
+        let worktree = Worktree::new(
+            "main".to_string(),
+            "main".to_string(),
+            "/home/user/project".to_string(),
+            false,
+            false,
+            false,
+            Some("abc123".to_string()),
+            None,
+        );
+
+        assert_eq!(worktree.display_name(), "main");
+    }
+
+    #[test]
+    fn test_display_name_with_slash() {
+        let worktree = Worktree::new(
+            "feat-feature-001".to_string(),
+            "feat/feature-001".to_string(),
+            "/home/user/project.worktrees/feat-feature-001".to_string(),
+            false,
+            false,
+            false,
+            Some("abc123".to_string()),
+            None,
+        );
+
+        assert_eq!(worktree.display_name(), "feat-feature-001 on feat/feature-001");
+    }
+
+    #[test]
+    fn test_display_name_multiple_slashes() {
+        let worktree = Worktree::new(
+            "feature-auth-oauth".to_string(),
+            "feature/auth/oauth".to_string(),
+            "/home/user/project.worktrees/feature-auth-oauth".to_string(),
+            false,
+            false,
+            false,
+            Some("abc123".to_string()),
+            None,
+        );
+
+        assert_eq!(worktree.display_name(), "feature-auth-oauth on feature/auth/oauth");
     }
 }

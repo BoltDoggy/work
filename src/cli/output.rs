@@ -37,8 +37,8 @@ pub fn format_worktree_table(worktrees: Vec<crate::core::worktree::Worktree>) ->
         };
 
         table.add_row(vec![
-            Cell::new(&wt.name).fg(Color::Cyan),
-            Cell::new(&wt.branch),
+            Cell::new(&wt.dirname).fg(Color::Cyan),
+            Cell::new(&wt.branch_name),
             Cell::new(&wt.path),
             Cell::new(current_marker).fg(Color::Green),
             Cell::new(status),
@@ -72,14 +72,14 @@ pub fn format_worktree_compact(worktrees: Vec<crate::core::worktree::Worktree>) 
 
         // worktree 名称（目录名）：主目录用紫色，其他用青色
         let name = if is_main {
-            wt.name.purple().bold().to_string()
+            wt.dirname.purple().bold().to_string()
         } else {
-            wt.name.cyan().to_string()
+            wt.dirname.cyan().to_string()
         };
 
         // 当前分支：黄色（如果与目录名不同）
-        let branch_info = if wt.branch != wt.name && wt.branch != "HEAD" {
-            format!(" on {}", wt.branch.yellow())
+        let branch_info = if wt.branch_name != wt.dirname && wt.branch_name != "HEAD" {
+            format!(" on {}", wt.branch_name.yellow())
         } else if wt.is_detached {
             format!(" on {}", "HEAD".yellow())
         } else {
@@ -128,8 +128,8 @@ pub fn format_worktree_info(worktree: &crate::core::worktree::Worktree) -> Strin
   Current: {}
   Detached: {}
 {}{}",
-        worktree.name,
-        worktree.branch,
+        worktree.dirname,
+        worktree.branch_name,
         worktree.path,
         worktree.head_commit.as_ref().unwrap_or(&"N/A".to_string()),
         if worktree.is_current { "Yes" } else { "No" },

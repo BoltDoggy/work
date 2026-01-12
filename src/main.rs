@@ -146,7 +146,7 @@ fn switch_command_handler(name: Option<&str>, print_path: bool) -> Result<()> {
         // 查找指定的 worktree
         worktrees
             .iter()
-            .find(|wt| wt.name == n)
+            .find(|wt| wt.dirname == n)
             .ok_or_else(|| anyhow::anyhow!("Worktree '{}' not found", n))?
     } else {
         // 交互式选择
@@ -163,9 +163,9 @@ fn switch_command_handler(name: Option<&str>, print_path: bool) -> Result<()> {
         println!("{}", target_worktree.path);
     } else {
         // 输出友好的切换提示
-        println!("切换到 worktree: {}", target_worktree.name);
+        println!("切换到 worktree: {}", target_worktree.dirname);
         println!("路径: {}", target_worktree.path);
-        println!("\n提示: 使用 eval \"$(work switch {} --print-path)\" 自动切换目录", target_worktree.name);
+        println!("\n提示: 使用 eval \"$(work switch {} --print-path)\" 自动切换目录", target_worktree.dirname);
     }
 
     Ok(())
@@ -207,6 +207,10 @@ fn create_command_handler(name: &str, branch: Option<&str>, path: Option<&str>, 
         .ok_or_else(|| anyhow::anyhow!("Cannot determine repository root"))?;
 
     // 确定路径
+    // name 参数实际上是分支名（可能包含斜杠）
+    // 转换分支名得到目录名
+    let dirname = core::git_ops::branch_to_dirname(name);
+
     let worktree_path = if let Some(custom_path) = path {
         custom_path.to_string()
     } else {
@@ -222,12 +226,12 @@ fn create_command_handler(name: &str, branch: Option<&str>, path: Option<&str>, 
             .ok_or_else(|| anyhow::anyhow!("Cannot determine parent directory"))?;
 
         let worktrees_dir_name = format!("{}.worktrees", dir_name);
-        worktrees_parent.join(worktrees_dir_name).join(name).to_string_lossy().to_string()
+        worktrees_parent.join(worktrees_dir_name).join(&dirname).to_string_lossy().to_string()
     };
 
-    // 检查 worktree 是否已存在
-    if worktrees.iter().any(|wt| wt.name == name) {
-        return Err(anyhow::anyhow!("Worktree '{}' already exists", name));
+    // 检查 worktree 是否已存在（使用转换后的目录名）
+    if worktrees.iter().any(|wt| wt.dirname == dirname) {
+        return Err(anyhow::anyhow!("Worktree '{}' already exists", dirname));
     }
 
     // 交互式选择基准分支
@@ -254,20 +258,78 @@ fn create_command_handler(name: &str, branch: Option<&str>, path: Option<&str>, 
         if !branch_exists(&base) {
             return Err(anyhow::anyhow!("Branch '{}' does not exist", base));
         }
-        create_worktree(&base, &worktree_path)?;
-        println!("{} {} from branch {}",
-            "Created worktree".green().bold(),
-            name.cyan().bold(),
-            base.yellow()
-        );
+
+        match create_worktree(&base, &worktree_path) {
+            Ok(_) => {
+                // T021: 显示成功消息，包含目录名和分支名
+                if dirname == name {
+                    // 无转换（分支名无斜杠）
+                    println!("{} {} from branch {}",
+                        "Created worktree".green().bold(),
+                        dirname.cyan().bold(),
+                        base.yellow()
+                    );
+                } else {
+                    // 有转换（分支名有斜杠）
+                    println!("{} {} (directory: {}) from branch {}",
+                        "Created worktree".green().bold(),
+                        name.cyan().bold(),
+                        dirname.cyan().dimmed(),
+                        base.yellow()
+                    );
+                }
+            }
+            Err(e) => {
+                // T020: 处理 DirNameConflict 错误
+                if let crate::utils::errors::WorktreeError::DirNameConflict { dirname: conflict_dirname, existing_branch } = e {
+                    eprintln!("{}", "Error: Cannot create worktree - directory name conflict".red().bold());
+                    eprintln!();
+                    eprintln!("The branch '{}' would create directory '{}',", name, conflict_dirname);
+                    eprintln!("which conflicts with existing worktree for branch '{}'.", existing_branch);
+                    eprintln!();
+                    eprintln!("{}", "Suggested solutions:".yellow().bold());
+                    eprintln!("  1. Use a different branch name");
+                    eprintln!("  2. Delete the existing worktree with: work delete {}", conflict_dirname);
+                    return Err(anyhow::anyhow!("Directory name conflict"));
+                }
+                return Err(e.into());
+            }
+        }
     } else {
         // 创建新分支
         let upstream = branch.map(|b| b.to_string());
-        create_worktree_with_new_branch(name, &worktree_path, upstream.as_deref())?;
-        println!("{} {} with new branch",
-            "Created worktree".green().bold(),
-            name.cyan().bold()
-        );
+        match create_worktree_with_new_branch(name, &worktree_path, upstream.as_deref()) {
+            Ok(_) => {
+                // T021: 显示成功消息
+                if dirname == name {
+                    println!("{} {} with new branch",
+                        "Created worktree".green().bold(),
+                        dirname.cyan().bold()
+                    );
+                } else {
+                    println!("{} {} (directory: {}) with new branch",
+                        "Created worktree".green().bold(),
+                        name.cyan().bold(),
+                        dirname.cyan().dimmed()
+                    );
+                }
+            }
+            Err(e) => {
+                // T020: 处理错误
+                if let crate::utils::errors::WorktreeError::DirNameConflict { dirname: conflict_dirname, existing_branch } = e {
+                    eprintln!("{}", "Error: Cannot create worktree - directory name conflict".red().bold());
+                    eprintln!();
+                    eprintln!("The branch '{}' would create directory '{}',", name, conflict_dirname);
+                    eprintln!("which conflicts with existing worktree for branch '{}'.", existing_branch);
+                    eprintln!();
+                    eprintln!("{}", "Suggested solutions:".yellow().bold());
+                    eprintln!("  1. Use a different branch name");
+                    eprintln!("  2. Delete the existing worktree with: work delete {}", conflict_dirname);
+                    return Err(anyhow::anyhow!("Directory name conflict"));
+                }
+                return Err(e.into());
+            }
+        }
     }
 
     println!("\n{}: {}", "Path".bold(), worktree_path.dimmed());
@@ -284,7 +346,7 @@ fn delete_command_handler(names: &[String], force: bool, interactive: bool) -> R
 
     // 如果没有指定名称且是交互式模式，显示选择列表
     let targets = if names.is_empty() && interactive {
-        let items: Vec<String> = worktrees.iter().map(|wt| wt.name.clone()).collect();
+        let items: Vec<String> = worktrees.iter().map(|wt| wt.dirname.clone()).collect();
 
         if items.is_empty() {
             return Err(anyhow::anyhow!("No worktrees to delete"));
@@ -306,7 +368,7 @@ fn delete_command_handler(names: &[String], force: bool, interactive: bool) -> R
     for name in &targets {
         let worktree = worktrees
             .iter()
-            .find(|wt| wt.name == *name)
+            .find(|wt| wt.dirname == *name)
             .ok_or_else(|| anyhow::anyhow!("Worktree '{}' not found", name))?;
 
         // 检查是否为当前 worktree
@@ -347,50 +409,61 @@ fn delete_command_handler(names: &[String], force: bool, interactive: bool) -> R
 }
 
 /// 处理 info 命令
-fn info_command_handler(name: &str, _output_format: &str) -> Result<()> {
+fn info_command_handler(name: &str, output_format: &str) -> Result<()> {
     let worktrees = list_worktrees()?;
 
     let worktree = worktrees
         .iter()
-        .find(|wt| wt.name == name)
+        .find(|wt| wt.dirname == name)
         .ok_or_else(|| anyhow::anyhow!("Worktree '{}' not found", name))?;
 
-    // 输出带颜色的基本信息
-    println!("{}: {}", "Worktree".bold().green(), worktree.name.cyan().bold());
-    println!("  {}: {}", "Branch".bold(), worktree.branch.yellow());
-    println!("  {}: {}", "Path".bold(), worktree.path.dimmed());
-    println!("  {}: {}", "HEAD".bold(), worktree.head_commit.as_ref().unwrap_or(&"N/A".to_string()).dimmed());
-    println!("  {}: {}", "Current".bold(), if worktree.is_current { "Yes".green() } else { "No".dimmed() });
-    println!("  {}: {}", "Detached".bold(), if worktree.is_detached { "Yes".yellow() } else { "No".dimmed() });
-    if let Some(upstream) = &worktree.upstream_branch {
-        println!("  {}: {}", "Upstream".bold(), upstream.cyan());
-    }
-    println!("  {}: {}", "Last Modified".bold(), worktree.last_modified.format("%Y-%m-%d %H:%M:%S").to_string().dimmed());
+    let format = OutputFormat::from_str(output_format);
 
-    // 显示未提交的更改
-    let path = Path::new(&worktree.path);
-    if let Ok(status) = get_worktree_status(path) {
-        if !status.modified.is_empty() || !status.staged.is_empty() || !status.untracked.is_empty() {
-            println!("\n{}:", "Uncommitted Changes".red().bold());
-
-            if !status.staged.is_empty() {
-                println!("  {}:", "Staged".green());
-                for file in &status.staged {
-                    println!("    {} {}", "✓".green(), file.dimmed());
-                }
+    match format {
+        OutputFormat::Json => {
+            // T034: 输出 JSON 格式，包含 directory 和 branch 字段
+            let json_output = format_worktree_json(vec![worktree.clone()]);
+            println!("{}", json_output);
+        }
+        _ => {
+            // 输出带颜色的基本信息
+            println!("{}: {}", "Worktree".bold().green(), worktree.dirname.cyan().bold());
+            println!("  {}: {}", "Branch".bold(), worktree.branch_name.yellow());
+            println!("  {}: {}", "Path".bold(), worktree.path.dimmed());
+            println!("  {}: {}", "HEAD".bold(), worktree.head_commit.as_ref().unwrap_or(&"N/A".to_string()).dimmed());
+            println!("  {}: {}", "Current".bold(), if worktree.is_current { "Yes".green() } else { "No".dimmed() });
+            println!("  {}: {}", "Detached".bold(), if worktree.is_detached { "Yes".yellow() } else { "No".dimmed() });
+            if let Some(upstream) = &worktree.upstream_branch {
+                println!("  {}: {}", "Upstream".bold(), upstream.cyan());
             }
+            println!("  {}: {}", "Last Modified".bold(), worktree.last_modified.format("%Y-%m-%d %H:%M:%S").to_string().dimmed());
 
-            if !status.modified.is_empty() {
-                println!("  {}:", "Modified".yellow());
-                for file in &status.modified {
-                    println!("    {} {}", "M".yellow(), file.dimmed());
-                }
-            }
+            // 显示未提交的更改
+            let path = Path::new(&worktree.path);
+            if let Ok(status) = get_worktree_status(path) {
+                if !status.modified.is_empty() || !status.staged.is_empty() || !status.untracked.is_empty() {
+                    println!("\n{}:", "Uncommitted Changes".red().bold());
 
-            if !status.untracked.is_empty() {
-                println!("  {}:", "Untracked".dimmed());
-                for file in &status.untracked {
-                    println!("    {} {}", "?".dimmed(), file.dimmed());
+                    if !status.staged.is_empty() {
+                        println!("  {}:", "Staged".green());
+                        for file in &status.staged {
+                            println!("    {} {}", "✓".green(), file.dimmed());
+                        }
+                    }
+
+                    if !status.modified.is_empty() {
+                        println!("  {}:", "Modified".yellow());
+                        for file in &status.modified {
+                            println!("    {} {}", "M".yellow(), file.dimmed());
+                        }
+                    }
+
+                    if !status.untracked.is_empty() {
+                        println!("  {}:", "Untracked".dimmed());
+                        for file in &status.untracked {
+                            println!("    {} {}", "?".dimmed(), file.dimmed());
+                        }
+                    }
                 }
             }
         }

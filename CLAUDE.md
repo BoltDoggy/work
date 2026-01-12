@@ -607,6 +607,8 @@ Three formats supported (via `-o/--output` flag):
 - System Git (no persistent storage) (001-git-worktree-cli)
 - YAML (GitHub Actions Workflow) + Bash scripting (002-fix-release)
 - N/A (CI/CD 流程，无持久化存储) (002-fix-release)
+- Rust 1.75+ (edition 2021) + clap 4.5 (CLI), anyhow 1.0 (错误处理), thiserror 1.0 (自定义错误), serde 1.0 (序列化), comfy-table 7.0 (表格输出), colored 2.1 (颜色输出), chrono 0.4 (时间处理) (003-branch-slash-conversion)
+- 无持久化存储（仅 Git worktree 元数据） (003-branch-slash-conversion)
 
 ## Recent Changes
 - 001-git-worktree-cli: Added colored output with main directory marker

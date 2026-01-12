@@ -3,6 +3,51 @@ use crate::core::worktree::Worktree;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+/// 将分支名转换为目录名（将所有 / 替换为 -）
+pub fn branch_to_dirname(branch_name: &str) -> String {
+    branch_name.replace('/', "-")
+}
+
+/// 验证目录名是否合法
+/// 检查：非空、不包含路径分隔符、不以 . 开头
+pub fn validate_dirname(dirname: &str) -> Result<()> {
+    if dirname.is_empty() {
+        return Err(WorktreeError::InvalidBranchName(
+            "Directory name cannot be empty".to_string(),
+        ));
+    }
+
+    if dirname.contains('/') || dirname.contains('\\') {
+        return Err(WorktreeError::InvalidBranchName(
+            "Directory name cannot contain path separators".to_string(),
+        ));
+    }
+
+    if dirname.starts_with('.') {
+        return Err(WorktreeError::InvalidBranchName(
+            "Directory name cannot start with a dot".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// 检查目录名是否与现有 worktree 冲突
+pub fn check_dirname_conflict(
+    dirname: &str,
+    existing_worktrees: &[Worktree],
+) -> Result<()> {
+    if let Some(existing) = existing_worktrees.iter().find(|w| w.dirname == dirname) {
+        Err(WorktreeError::DirNameConflict {
+            dirname: dirname.to_string(),
+            existing_branch: existing.branch_name.clone(),
+        })
+    } else {
+        Ok(())
+    }
+}
+
+
 /// 运行 git 命令并返回输出
 fn run_git(args: &[&str]) -> Result<String> {
     let output = Command::new("git")
@@ -130,6 +175,27 @@ pub fn get_upstream_branch() -> Result<Option<String>> {
 
 /// 创建新的 worktree（基于现有分支）
 pub fn create_worktree(branch_name: &str, path: &str) -> Result<String> {
+    create_worktree_internal(branch_name, path, None)
+}
+
+/// 内部函数：创建 worktree，支持冲突检查
+fn create_worktree_internal(
+    branch_name: &str,
+    path: &str,
+    existing_worktrees: Option<&[Worktree]>,
+) -> Result<String> {
+    // T013: 转换分支名为目录名
+    let dirname = branch_to_dirname(branch_name);
+
+    // T014: 验证目录名
+    validate_dirname(&dirname)?;
+
+    // T015: 如果提供了现有 worktree 列表，检查冲突
+    if let Some(worktrees) = existing_worktrees {
+        check_dirname_conflict(&dirname, worktrees)?;
+    }
+
+    // T016: 使用原始分支名和提供的路径创建 worktree
     let output = Command::new("git")
         .args(["worktree", "add", path, branch_name])
         .output()
@@ -146,6 +212,10 @@ pub fn create_worktree(branch_name: &str, path: &str) -> Result<String> {
 
 /// 创建新分支并同时创建 worktree
 pub fn create_worktree_with_new_branch(branch_name: &str, path: &str, upstream: Option<&str>) -> Result<String> {
+    // 应用相同的转换逻辑：T017
+    let dirname = branch_to_dirname(branch_name);
+    validate_dirname(&dirname)?;
+
     let mut args = vec!["worktree", "add", "-b", branch_name, path];
 
     if let Some(upstream_branch) = upstream {
@@ -243,7 +313,7 @@ pub fn prune_worktrees(dry_run: bool) -> Result<Vec<String>> {
         // 检查 worktree 目录是否存在
         if !path.exists() {
             if dry_run {
-                pruned.push(format!("Would prune: {} (directory not found)", wt.name));
+                pruned.push(format!("Would prune: {} (directory not found)", wt.dirname));
             } else {
                 // 使用 git worktree prune 清理无效的 worktree
                 let output = Command::new("git")
@@ -252,7 +322,7 @@ pub fn prune_worktrees(dry_run: bool) -> Result<Vec<String>> {
                     .map_err(|e| WorktreeError::GitError(format!("Failed to execute git: {}", e)))?;
 
                 if output.status.success() {
-                    pruned.push(format!("Pruned: {} (directory not found)", wt.name));
+                    pruned.push(format!("Pruned: {} (directory not found)", wt.dirname));
                 }
             }
         }
@@ -524,5 +594,44 @@ mod tests {
 
         assert!(output.status.success(), "git command failed");
         assert_eq!(branch, "main");
+    }
+
+    // T037: 单元测试 - branch_to_dirname()
+    #[test]
+    fn test_branch_to_dirname_simple_branch() {
+        // 简单分支名（无斜杠）
+        assert_eq!(branch_to_dirname("main"), "main");
+        assert_eq!(branch_to_dirname("develop"), "develop");
+        assert_eq!(branch_to_dirname("feature-auth"), "feature-auth");
+    }
+
+    #[test]
+    fn test_branch_to_dirname_single_slash() {
+        // 单个斜杠
+        assert_eq!(branch_to_dirname("feat/feature-001"), "feat-feature-001");
+        assert_eq!(branch_to_dirname("feature/auth"), "feature-auth");
+        assert_eq!(branch_to_dirname("bugfix/critical-issue"), "bugfix-critical-issue");
+    }
+
+    #[test]
+    fn test_branch_to_dirname_multiple_slashes() {
+        // 多个斜杠
+        assert_eq!(branch_to_dirname("feature/auth/oauth"), "feature-auth-oauth");
+        assert_eq!(branch_to_dirname("feat/api/v2/endpoints"), "feat-api-v2-endpoints");
+        assert_eq!(branch_to_dirname("a/b/c/d/e"), "a-b-c-d-e");
+    }
+
+    #[test]
+    fn test_branch_to_dirname_empty_string() {
+        // 空字符串
+        assert_eq!(branch_to_dirname(""), "");
+    }
+
+    #[test]
+    fn test_branch_to_dirname_slashes_at_boundaries() {
+        // 边界位置的斜杠
+        assert_eq!(branch_to_dirname("/leading-slash"), "-leading-slash");
+        assert_eq!(branch_to_dirname("trailing-slash/"), "trailing-slash-");
+        assert_eq!(branch_to_dirname("/both/"), "-both-");
     }
 }
