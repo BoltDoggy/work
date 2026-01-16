@@ -23,7 +23,7 @@ use std::path::Path;
 #[derive(Parser, Debug)]
 #[command(name = "work")]
 #[command(author = "BoltDoggy <github@robolt.uu.me>")]
-#[command(version = "0.1.9")]
+#[command(version = "0.2.0")]
 #[command(about = "简化 Git worktree 的管理", long_about = None)]
 struct Args {
     #[command(subcommand)]
