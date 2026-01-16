@@ -149,14 +149,25 @@ work create feature-auth
 # 基于现有分支创建
 work create feature-auth --branch main
 
-# 交互式选择基准分支
+# 交互式选择分支来源（新增功能）
 work create feature-auth --interactive
+# 将显示菜单：
+# 1. 基于当前目录分支 - 使用当前工作目录的分支
+# 2. 基于主目录分支 - 使用主仓库的分支（无需切换目录）
+# 3. 自定义输入分支 - 输入任意分支名称（包括远程分支如 origin/feature）
 
 # 自定义路径
 work create feature-auth --path /custom/path
 ```
 
 **路径规则**: Worktree 自动创建在 `<repo-name>.worktrees/<name>/` 目录下，与主仓库同级。
+
+**分支来源说明**:
+- **基于当前目录分支**: 最常用的选项，基于当前工作目录所在的分支创建新 worktree
+- **基于主目录分支**: 便捷选项，从任意 worktree 基于主仓库分支创建，无需先切换目录
+- **自定义输入分支**: 灵活选项，支持输入本地分支名或远程分支名（如 `origin/feature`）
+
+**默认行为**: 未指定 `--branch` 参数时，默认基于当前目录分支创建
 
 ### 删除 worktree
 

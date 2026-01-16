@@ -1,6 +1,6 @@
-use comfy_table::{Table, Cell, Color};
-use serde::{Deserialize, Serialize};
 use colored::Colorize;
+use comfy_table::{Cell, Color, Table};
+use serde::{Deserialize, Serialize};
 
 /// 输出格式枚举
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -65,7 +65,7 @@ pub fn format_worktree_compact(worktrees: Vec<crate::core::worktree::Worktree>) 
 
         // 主目录标记：紫色粗体
         let main_marker = if is_main {
-            format!("{} ", "⌂".bold().purple())  // 屋顶符号表示主目录
+            format!("{} ", "⌂".bold().purple()) // 屋顶符号表示主目录
         } else {
             String::new()
         };
@@ -107,12 +107,7 @@ pub fn format_worktree_compact(worktrees: Vec<crate::core::worktree::Worktree>) 
         // 简化显示：目录名 + 分支 + 状态 + 路径（主目录）
         output.push_str(&format!(
             "{}{} {}{}{}{}\n",
-            current_marker,
-            main_marker,
-            name,
-            branch_info,
-            status_marker,
-            path_info
+            current_marker, main_marker, name, branch_info, status_marker, path_info
         ));
     }
 
@@ -121,9 +116,8 @@ pub fn format_worktree_compact(worktrees: Vec<crate::core::worktree::Worktree>) 
 
 /// 格式化 worktree 列表为 JSON
 pub fn format_worktree_json(worktrees: Vec<crate::core::worktree::Worktree>) -> String {
-    serde_json::to_string_pretty(&worktrees).unwrap_or_else(|_| {
-        format!("{{\"error\": \"Failed to serialize worktrees\"}}")
-    })
+    serde_json::to_string_pretty(&worktrees)
+        .unwrap_or_else(|_| format!("{{\"error\": \"Failed to serialize worktrees\"}}"))
 }
 
 /// 格式化单个 worktree 的详细信息
@@ -147,7 +141,10 @@ pub fn format_worktree_info(worktree: &crate::core::worktree::Worktree) -> Strin
         } else {
             String::new()
         },
-        format!("  Last Modified: {}\n", worktree.last_modified.format("%Y-%m-%d %H:%M:%S"))
+        format!(
+            "  Last Modified: {}\n",
+            worktree.last_modified.format("%Y-%m-%d %H:%M:%S")
+        )
     )
 }
 
@@ -212,7 +209,13 @@ mod tests {
     fn test_output_format_from_str() {
         assert!(matches!(OutputFormat::from_str("json"), OutputFormat::Json));
         assert!(matches!(OutputFormat::from_str("JSON"), OutputFormat::Json));
-        assert!(matches!(OutputFormat::from_str("table"), OutputFormat::Table));
-        assert!(matches!(OutputFormat::from_str("invalid"), OutputFormat::Table));
+        assert!(matches!(
+            OutputFormat::from_str("table"),
+            OutputFormat::Table
+        ));
+        assert!(matches!(
+            OutputFormat::from_str("invalid"),
+            OutputFormat::Table
+        ));
     }
 }

@@ -97,7 +97,10 @@ pub fn validate_worktree_name(name: &str) -> Result<()> {
     }
 
     // 不能包含特殊字符（除了 - 和 _）
-    if !name.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+    if !name
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+    {
         return Err(WorktreeError::InvalidName(
             "Worktree name contains invalid characters".to_string(),
         ));

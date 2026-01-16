@@ -1,5 +1,5 @@
-use crate::utils::errors::{Result, WorktreeError};
 use crate::core::git_ops;
+use crate::utils::errors::{Result, WorktreeError};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -25,8 +25,14 @@ impl Repository {
 
         // 尝试获取仓库根目录
         let output = Command::new("git")
-            .args(["-C", path.to_str().ok_or_else(|| WorktreeError::InvalidPath(path.to_string_lossy().to_string()))?,
-                   "rev-parse", "--show-toplevel"])
+            .args([
+                "-C",
+                path.to_str().ok_or_else(|| {
+                    WorktreeError::InvalidPath(path.to_string_lossy().to_string())
+                })?,
+                "rev-parse",
+                "--show-toplevel",
+            ])
             .output()
             .map_err(|e| WorktreeError::GitError(format!("Failed to execute git: {}", e)))?;
 
@@ -60,8 +66,14 @@ impl Repository {
     /// 计算关联的 worktree 数量
     fn count_worktrees(root_path: &Path) -> Result<usize> {
         let output = Command::new("git")
-            .args(["-C", root_path.to_str().ok_or_else(|| WorktreeError::InvalidPath(root_path.to_string_lossy().to_string()))?,
-                   "worktree", "list"])
+            .args([
+                "-C",
+                root_path.to_str().ok_or_else(|| {
+                    WorktreeError::InvalidPath(root_path.to_string_lossy().to_string())
+                })?,
+                "worktree",
+                "list",
+            ])
             .output()
             .map_err(|e| WorktreeError::GitError(format!("Failed to execute git: {}", e)))?;
 
@@ -76,7 +88,9 @@ impl Repository {
 
     /// 检测仓库的默认分支名
     fn detect_default_branch(root_path: &Path) -> Result<String> {
-        let root_path_str = root_path.to_str().ok_or_else(|| WorktreeError::InvalidPath(root_path.to_string_lossy().to_string()))?;
+        let root_path_str = root_path
+            .to_str()
+            .ok_or_else(|| WorktreeError::InvalidPath(root_path.to_string_lossy().to_string()))?;
 
         // 尝试获取 HEAD 引用
         let output = Command::new("git")
@@ -100,7 +114,14 @@ impl Repository {
         for branch_name in common_defaults {
             // 检查分支是否存在
             let output = Command::new("git")
-                .args(["-C", root_path_str, "show-ref", "--verify", "--quiet", &format!("refs/heads/{}", branch_name)])
+                .args([
+                    "-C",
+                    root_path_str,
+                    "show-ref",
+                    "--verify",
+                    "--quiet",
+                    &format!("refs/heads/{}", branch_name),
+                ])
                 .output();
 
             if output.map(|o| o.status.success()).unwrap_or(false) {
@@ -129,10 +150,7 @@ impl Repository {
 
             // 如果当前路径不是主仓库，尝试从路径中提取 worktree 名称
             if worktree_path != root_path {
-                if let Some(name) = worktree_path
-                    .file_name()
-                    .and_then(|n| n.to_str())
-                {
+                if let Some(name) = worktree_path.file_name().and_then(|n| n.to_str()) {
                     return Ok(Some(name.to_string()));
                 }
             }
@@ -213,8 +231,15 @@ mod tests {
 
         // 创建初始提交
         Command::new("git")
-            .args(["-c", "user.name=Test", "-c", "user.email=test@example.com",
-                   "commit", "-m", "Initial commit"])
+            .args([
+                "-c",
+                "user.name=Test",
+                "-c",
+                "user.email=test@example.com",
+                "commit",
+                "-m",
+                "Initial commit",
+            ])
             .current_dir(repo_path)
             .output()
             .unwrap();

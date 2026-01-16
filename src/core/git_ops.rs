@@ -1,7 +1,59 @@
-use crate::utils::errors::{Result, WorktreeError};
 use crate::core::worktree::Worktree;
+use crate::utils::errors::{Result, WorktreeError};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+/// 分支来源选项
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BranchSource {
+    /// 基于当前工作目录所在的分支
+    Current {
+        /// 当前分支名称
+        branch_name: String,
+    },
+
+    /// 基于主仓库（main repository）所在的分支
+    Main {
+        /// 主目录路径
+        main_repo_path: PathBuf,
+        /// 主目录当前分支名称
+        branch_name: String,
+    },
+
+    /// 自定义分支名称
+    Custom {
+        /// 分支名称（可以是本地分支或远程分支）
+        branch_name: String,
+        /// 是否为远程分支（如 origin/feature）
+        is_remote: bool,
+    },
+}
+
+impl BranchSource {
+    /// 获取分支名称（用于创建 worktree）
+    pub fn branch_name(&self) -> &str {
+        match self {
+            BranchSource::Current { branch_name } => branch_name,
+            BranchSource::Main { branch_name, .. } => branch_name,
+            BranchSource::Custom { branch_name, .. } => branch_name,
+        }
+    }
+
+    /// 获取描述性标签（用于显示）
+    pub fn label(&self) -> String {
+        match self {
+            BranchSource::Current { branch_name } => {
+                format!("基于当前目录分支 ({})", branch_name)
+            }
+            BranchSource::Main { branch_name, .. } => {
+                format!("基于主目录分支 ({})", branch_name)
+            }
+            BranchSource::Custom { branch_name, .. } => {
+                format!("自定义分支 ({})", branch_name)
+            }
+        }
+    }
+}
 
 /// 将分支名转换为目录名（将所有 / 替换为 -）
 pub fn branch_to_dirname(branch_name: &str) -> String {
@@ -33,10 +85,7 @@ pub fn validate_dirname(dirname: &str) -> Result<()> {
 }
 
 /// 检查目录名是否与现有 worktree 冲突
-pub fn check_dirname_conflict(
-    dirname: &str,
-    existing_worktrees: &[Worktree],
-) -> Result<()> {
+pub fn check_dirname_conflict(dirname: &str, existing_worktrees: &[Worktree]) -> Result<()> {
     if let Some(existing) = existing_worktrees.iter().find(|w| w.dirname == dirname) {
         Err(WorktreeError::DirNameConflict {
             dirname: dirname.to_string(),
@@ -46,7 +95,6 @@ pub fn check_dirname_conflict(
         Ok(())
     }
 }
-
 
 /// 运行 git 命令并返回输出
 fn run_git(args: &[&str]) -> Result<String> {
@@ -136,7 +184,12 @@ pub fn list_worktrees() -> Result<Vec<Worktree>> {
 /// 检查路径是否在 Git 仓库中
 pub fn is_inside_repository<P: AsRef<Path>>(path: P) -> bool {
     Command::new("git")
-        .args(["-C", path.as_ref().to_str().unwrap_or("."), "rev-parse", "--is-inside-work-tree"])
+        .args([
+            "-C",
+            path.as_ref().to_str().unwrap_or("."),
+            "rev-parse",
+            "--is-inside-work-tree",
+        ])
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
@@ -171,6 +224,165 @@ pub fn get_upstream_branch() -> Result<Option<String>> {
     } else {
         Ok(Some(upstream))
     }
+}
+
+/// 获取主仓库目录路径和当前分支
+/// 使用 git rev-parse --git-common-dir 定位主仓库
+pub fn get_main_repo_branch() -> Result<(PathBuf, String)> {
+    // 获取 git-common-dir
+    let output = Command::new("git")
+        .args(["rev-parse", "--git-common-dir"])
+        .output()
+        .map_err(|e| WorktreeError::GitError(format!("Failed to execute git: {}", e)))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(WorktreeError::GitError(stderr.to_string()));
+    }
+
+    let git_common_dir = String::from_utf8_lossy(&output.stdout).trim().to_string();
+
+    // git_common_dir 应该指向主仓库的 .git 目录
+    // 它的父目录就是主仓库所在目录
+    let git_dir = PathBuf::from(&git_common_dir);
+    let main_repo = git_dir
+        .parent()
+        .ok_or_else(|| WorktreeError::GitError("Cannot determine repository root".to_string()))?;
+
+    // 在主目录执行 git 命令获取当前分支
+    let branch_output = Command::new("git")
+        .args([
+            "-C",
+            &main_repo.to_string_lossy(),
+            "rev-parse",
+            "--abbrev-ref",
+            "HEAD",
+        ])
+        .output()
+        .map_err(|e| WorktreeError::GitError(format!("Failed to get main repo branch: {}", e)))?;
+
+    if !branch_output.status.success() {
+        let stderr = String::from_utf8_lossy(&branch_output.stderr);
+        return Err(WorktreeError::GitError(stderr.to_string()));
+    }
+
+    let branch_name = String::from_utf8_lossy(&branch_output.stdout)
+        .trim()
+        .to_string();
+
+    // 检查是否为 detached HEAD
+    if branch_name == "HEAD" {
+        // 获取 commit SHA
+        let commit_output = Command::new("git")
+            .args(["-C", &main_repo.to_string_lossy(), "rev-parse", "HEAD"])
+            .output()
+            .map_err(|e| WorktreeError::GitError(format!("Failed to get commit SHA: {}", e)))?;
+
+        let commit_sha = String::from_utf8_lossy(&commit_output.stdout)
+            .trim()
+            .to_string();
+
+        return Err(WorktreeError::MainRepoDetachedHead {
+            main_repo_path: main_repo.to_string_lossy().to_string(),
+            commit_sha,
+        });
+    }
+
+    Ok((main_repo.to_path_buf(), branch_name))
+}
+
+/// 检查远程分支是否存在
+pub fn branch_exists_remote(branch_name: &str) -> bool {
+    // 移除可能的 origin/ 前缀
+    let branch = branch_name.trim_start_matches("origin/");
+
+    Command::new("git")
+        .args([
+            "show-ref",
+            "--verify",
+            "--quiet",
+            &format!("refs/remotes/origin/{}", branch),
+        ])
+        .output()
+        .map(|output| output.status.success())
+        .unwrap_or(false)
+}
+
+/// 验证分支来源是否有效
+/// 检查 detached HEAD 状态和分支存在性
+pub fn validate_branch_source(source: &BranchSource) -> Result<()> {
+    match source {
+        BranchSource::Current { branch_name } => {
+            // 检查当前分支是否为 detached HEAD
+            if branch_name == "HEAD" {
+                // 获取当前路径
+                let current_path = std::env::current_dir()
+                    .map_err(|e| WorktreeError::IoError(e))?
+                    .to_string_lossy()
+                    .to_string();
+
+                // 获取 commit SHA
+                let commit_sha = run_git(&["rev-parse", "HEAD"])?.trim().to_string();
+
+                return Err(WorktreeError::CurrentDirDetachedHead {
+                    current_path,
+                    commit_sha,
+                });
+            }
+        }
+        BranchSource::Custom {
+            branch_name,
+            is_remote,
+        } => {
+            if *is_remote {
+                // 检查远程分支
+                if !branch_exists_remote(branch_name) {
+                    // 获取可用分支列表
+                    let locals = list_local_branches().unwrap_or_default();
+                    let remotes = list_remote_branches().unwrap_or_default();
+
+                    return Err(WorktreeError::BranchNotFound {
+                        branch_name: branch_name.clone(),
+                        available_locals: locals,
+                        available_remotes: remotes,
+                    });
+                }
+            } else {
+                // 检查本地分支
+                if !branch_exists(branch_name) {
+                    // 也检查远程分支
+                    if !branch_exists_remote(branch_name) {
+                        let locals = list_local_branches().unwrap_or_default();
+                        let remotes = list_remote_branches().unwrap_or_default();
+
+                        return Err(WorktreeError::BranchNotFound {
+                            branch_name: branch_name.clone(),
+                            available_locals: locals,
+                            available_remotes: remotes,
+                        });
+                    }
+                }
+            }
+        }
+        BranchSource::Main { .. } => {
+            // 主目录分支已在 get_main_repo_branch() 中验证
+        }
+    }
+
+    Ok(())
+}
+
+/// 列出所有远程分支
+fn list_remote_branches() -> Result<Vec<String>> {
+    let output = run_git(&["branch", "-r", "--format=%(refname:short)"])?;
+
+    let branches: Vec<String> = output
+        .lines()
+        .map(|line| line.trim().to_string())
+        .filter(|line| !line.is_empty() && !line.contains("->")) // 过滤 HEAD 指针
+        .collect();
+
+    Ok(branches)
 }
 
 /// 创建新的 worktree（基于现有分支）
@@ -211,7 +423,11 @@ fn create_worktree_internal(
 }
 
 /// 创建新分支并同时创建 worktree
-pub fn create_worktree_with_new_branch(branch_name: &str, path: &str, upstream: Option<&str>) -> Result<String> {
+pub fn create_worktree_with_new_branch(
+    branch_name: &str,
+    path: &str,
+    upstream: Option<&str>,
+) -> Result<String> {
     // 应用相同的转换逻辑：T017
     let dirname = branch_to_dirname(branch_name);
     validate_dirname(&dirname)?;
@@ -279,8 +495,13 @@ pub fn list_local_branches() -> Result<Vec<String>> {
 /// 检查 worktree 路径是否有未提交的更改
 pub fn has_uncommitted_changes(path: &Path) -> Result<bool> {
     let output = Command::new("git")
-        .args(["-C", path.to_str().ok_or_else(|| WorktreeError::InvalidPath(path.to_string_lossy().to_string()))?,
-               "status", "--porcelain"])
+        .args([
+            "-C",
+            path.to_str()
+                .ok_or_else(|| WorktreeError::InvalidPath(path.to_string_lossy().to_string()))?,
+            "status",
+            "--porcelain",
+        ])
         .output()
         .map_err(|e| WorktreeError::GitError(format!("Failed to execute git: {}", e)))?;
 
@@ -296,7 +517,12 @@ pub fn has_uncommitted_changes(path: &Path) -> Result<bool> {
 /// 检查分支是否存在
 pub fn branch_exists(branch_name: &str) -> bool {
     Command::new("git")
-        .args(["show-ref", "--verify", "--quiet", &format!("refs/heads/{}", branch_name)])
+        .args([
+            "show-ref",
+            "--verify",
+            "--quiet",
+            &format!("refs/heads/{}", branch_name),
+        ])
         .output()
         .map(|output| output.status.success())
         .unwrap_or(false)
@@ -319,7 +545,9 @@ pub fn prune_worktrees(dry_run: bool) -> Result<Vec<String>> {
                 let output = Command::new("git")
                     .args(["worktree", "prune"])
                     .output()
-                    .map_err(|e| WorktreeError::GitError(format!("Failed to execute git: {}", e)))?;
+                    .map_err(|e| {
+                        WorktreeError::GitError(format!("Failed to execute git: {}", e))
+                    })?;
 
                 if output.status.success() {
                     pruned.push(format!("Pruned: {} (directory not found)", wt.dirname));
@@ -335,8 +563,13 @@ pub fn prune_worktrees(dry_run: bool) -> Result<Vec<String>> {
 pub fn get_worktree_status(path: &Path) -> Result<WorktreeStatusInfo> {
     // 检查未提交的更改
     let output = Command::new("git")
-        .args(["-C", path.to_str().ok_or_else(|| WorktreeError::InvalidPath(path.to_string_lossy().to_string()))?,
-               "status", "--porcelain=v1"])
+        .args([
+            "-C",
+            path.to_str()
+                .ok_or_else(|| WorktreeError::InvalidPath(path.to_string_lossy().to_string()))?,
+            "status",
+            "--porcelain=v1",
+        ])
         .output()
         .map_err(|e| WorktreeError::GitError(format!("Failed to execute git: {}", e)))?;
 
@@ -422,8 +655,7 @@ impl WorktreeData {
     /// 转换为 Worktree 结构体
     fn to_worktree(self) -> Result<Worktree> {
         // 检查是否为当前 worktree
-        let current_path = std::env::current_dir()
-            .map_err(|e| WorktreeError::IoError(e))?;
+        let current_path = std::env::current_dir().map_err(|e| WorktreeError::IoError(e))?;
         let is_current = current_path.starts_with(Path::new(&self.path));
 
         // 从路径推断 worktree 名称
@@ -484,8 +716,7 @@ impl WorktreeData {
     fn get_upstream_for_worktree(&self, _name: &str) -> Result<Option<String>> {
         // 如果不是当前 worktree，暂时返回 None
         // TODO: 可以通过切换到该 worktree 并运行 git rev-parse @{u} 来获取
-        let current_path = std::env::current_dir()
-            .map_err(|e| WorktreeError::IoError(e))?;
+        let current_path = std::env::current_dir().map_err(|e| WorktreeError::IoError(e))?;
         let is_current = current_path.starts_with(Path::new(&self.path));
 
         if is_current {
@@ -610,14 +841,23 @@ mod tests {
         // 单个斜杠
         assert_eq!(branch_to_dirname("feat/feature-001"), "feat-feature-001");
         assert_eq!(branch_to_dirname("feature/auth"), "feature-auth");
-        assert_eq!(branch_to_dirname("bugfix/critical-issue"), "bugfix-critical-issue");
+        assert_eq!(
+            branch_to_dirname("bugfix/critical-issue"),
+            "bugfix-critical-issue"
+        );
     }
 
     #[test]
     fn test_branch_to_dirname_multiple_slashes() {
         // 多个斜杠
-        assert_eq!(branch_to_dirname("feature/auth/oauth"), "feature-auth-oauth");
-        assert_eq!(branch_to_dirname("feat/api/v2/endpoints"), "feat-api-v2-endpoints");
+        assert_eq!(
+            branch_to_dirname("feature/auth/oauth"),
+            "feature-auth-oauth"
+        );
+        assert_eq!(
+            branch_to_dirname("feat/api/v2/endpoints"),
+            "feat-api-v2-endpoints"
+        );
         assert_eq!(branch_to_dirname("a/b/c/d/e"), "a-b-c-d-e");
     }
 

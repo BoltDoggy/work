@@ -39,6 +39,32 @@ pub enum WorktreeError {
         dirname: String,
         existing_branch: String,
     },
+
+    #[error(
+        "Main repository is in detached HEAD state at {main_repo_path} (commit: {commit_sha})"
+    )]
+    MainRepoDetachedHead {
+        main_repo_path: String,
+        commit_sha: String,
+    },
+
+    #[error(
+        "Current directory is in detached HEAD state at {current_path} (commit: {commit_sha})"
+    )]
+    CurrentDirDetachedHead {
+        current_path: String,
+        commit_sha: String,
+    },
+
+    #[error("Branch '{branch_name}' not found. Available locals: {available_locals:?}, remotes: {available_remotes:?}")]
+    BranchNotFound {
+        branch_name: String,
+        available_locals: Vec<String>,
+        available_remotes: Vec<String>,
+    },
+
+    #[error("Invalid branch source option: {input}")]
+    InvalidBranchSource { input: String },
 }
 
 /// Result 类型别名

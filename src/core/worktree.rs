@@ -1,7 +1,7 @@
+use crate::core::git_ops;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
-use crate::core::git_ops;
 
 /// Git worktree 的概念表示
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -224,7 +224,10 @@ mod tests {
             None,
         );
 
-        assert_eq!(worktree.display_name(), "feat-feature-001 on feat/feature-001");
+        assert_eq!(
+            worktree.display_name(),
+            "feat-feature-001 on feat/feature-001"
+        );
     }
 
     #[test]
@@ -240,6 +243,9 @@ mod tests {
             None,
         );
 
-        assert_eq!(worktree.display_name(), "feature-auth-oauth on feature/auth/oauth");
+        assert_eq!(
+            worktree.display_name(),
+            "feature-auth-oauth on feature/auth/oauth"
+        );
     }
 }
