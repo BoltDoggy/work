@@ -204,7 +204,8 @@ fn create_command_handler(name: &str, branch: Option<&str>, path: Option<&str>, 
     // 它的父目录就是主仓库所在目录
     let repo_root = git_dir
         .parent()
-        .ok_or_else(|| anyhow::anyhow!("Cannot determine repository root"))?;
+        .ok_or_else(|| anyhow::anyhow!("Cannot determine repository root"))?
+        .to_path_buf();
 
     // 确定路径
     // name 参数实际上是分支名（可能包含斜杠）
@@ -226,7 +227,13 @@ fn create_command_handler(name: &str, branch: Option<&str>, path: Option<&str>, 
             .ok_or_else(|| anyhow::anyhow!("Cannot determine parent directory"))?;
 
         let worktrees_dir_name = format!("{}.worktrees", dir_name);
-        worktrees_parent.join(worktrees_dir_name).join(&dirname).to_string_lossy().to_string()
+        let worktree_path_buf = worktrees_parent.join(worktrees_dir_name).join(&dirname);
+
+        // 规范化路径以用于 Git 命令
+        // 这会处理 Windows 的扩展路径语法 (//?/C:/)
+        utils::path::normalize_path_for_git(&worktree_path_buf)
+            .to_string_lossy()
+            .to_string()
     };
 
     // 检查 worktree 是否已存在（使用转换后的目录名）
