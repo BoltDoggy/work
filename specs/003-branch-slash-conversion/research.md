@@ -330,6 +330,138 @@ fn validate_dirname(dirname: &str) -> Result<(), WorktreeError> {
 
 ---
 
+---
+
+## Decision 7: 主目录路径显示增强 (2026-01-16 补充)
+
+**用户需求**: "work list 需要输出主目录的完整路径"
+
+**决策**: 扩展现有的 `format_worktree_compact()` 函数，为主目录（非 .worktrees 目录）在行尾添加完整路径显示。
+
+**理由**:
+1. **用户价值**: 在复杂的多 worktree 环境中，开发者需要快速定位主仓库位置
+2. **最小改动**: 现有代码已支持识别主目录（通过 `!wt.path.contains(".worktrees")` 判断）
+3. **一致性**: 与现有设计语言保持一致（使用 `.dimmed()` 灰色显示辅助信息）
+
+**实现方案**:
+
+### 修改 Compact 格式
+```rust
+// 现有输出：
+// *⌂  worktree on 003-branch-slash-conversion (modified)
+
+// 修改后输出：
+// *⌂  worktree on 003-branch-slash-conversion (modified) at /Volumes/code/demos/worktree
+```
+
+**代码实现** (src/cli/output.rs):
+```rust
+pub fn format_worktree_compact(worktrees: Vec<Worktree>) -> String {
+    let mut output = String::new();
+
+    for wt in worktrees {
+        let is_main = !wt.path.contains(".worktrees");
+
+        // ... 现有的标记和颜色逻辑 ...
+
+        // 新增：主目录路径显示
+        let path_info = if is_main {
+            format!(" at {}", wt.path.dimmed())
+        } else {
+            String::new()  // 非 worktree 目录不显示路径（避免信息过载）
+        };
+
+        output.push_str(&format!(
+            "{}{} {}{}{}\n",
+            current_marker, main_marker, name, branch_info, status_marker, path_info
+        ));
+    }
+
+    output.trim_end().to_string()
+}
+```
+
+### Table 格式（无需修改）
+Table 格式已包含 PATH 列，显示完整路径：
+```text
+┌─────────────────────┬──────────────────────────┬─────────────────────────┬───┬────────┐
+│ NAME                │ BRANCH                    │ PATH                    │ … │ STATUS │
+├─────────────────────┼──────────────────────────┼─────────────────────────┼───┼────────┤
+│ ⌂ worktree          │ 003-branch-slash-conversion│ /Volumes/code/demos/…  │ * │ Modified│
+│ feat-feature-001    │ feat/feature-001          │ …/worktrees/feat-…     │   │ Healthy │
+└─────────────────────┴──────────────────────────┴─────────────────────────┴───┴────────┘
+```
+
+### JSON 格式（无需修改）
+JSON 已包含 `path` 字段：
+```json
+{
+  "dirname": "worktree",
+  "branch_name": "003-branch-slash-conversion",
+  "path": "/Volumes/code/demos/worktree",
+  ...
+}
+```
+
+**设计决策**:
+
+| 决策点 | 选择 | 理由 |
+|--------|------|------|
+| 显示位置 | Compact 格式行尾 | 不干扰主要信息（目录名、分支名、状态） |
+| 路径颜色 | 灰色 (dimmed) | 与现有辅助信息（状态标记）保持一致 |
+| 显示范围 | 仅主目录 | 避免信息过载，worktree 路径通常不重要 |
+| 路径格式 | 完整绝对路径 | 明确无歧义，用户可自行缩写（如 shell 别名） |
+| 前缀文本 | " at " | 与 " on "（分支）语义对称，清晰自然 |
+
+**考虑的替代方案**:
+
+1. **为所有 worktree 显示路径**: 被拒绝，会导致信息过载和行过长
+2. **使用 `--verbose` 标志控制**: 被拒绝，增加命令复杂度，与"简化管理"理念冲突
+3. **新增 `work path` 子命令**: 被拒绝，过度设计，用户希望在 list 中直接看到
+4. **缩写路径为 `~` 或 `$HOME`**: 被拒绝，增加实现复杂度且不跨平台（Windows 无 `~`）
+
+**边界情况处理**:
+- **超长路径**: 依赖终端自动换行，不手动截断
+- **特殊字符路径**: Rust `std::path` 自动处理，无需额外逻辑
+- **Windows 路径**: 显示完整路径（如 `C:\Users\...\project`）
+
+**错误处理**: 无需新增错误处理，路径信息直接来自 `Worktree.path` 字段（已验证有效）
+
+**性能影响**:
+- **字符串拼接**: 每个主目录 worktree 增加 1 次 `format!()` 调用，开销可忽略
+- **路径长度**: 典型路径 < 100 字符，对输出性能无影响
+
+**测试策略**:
+- **单元测试**: 验证格式化输出包含 " at /path" 后缀（主目录）
+- **集成测试**: 验证 `work list` 输出正确显示主目录路径
+- **手动测试**: 验证颜色和布局视觉效果
+
+**向后兼容性**:
+- ✅ JSON 格式不变（已包含 path 字段）
+- ✅ Table 格式不变（PATH 列已存在）
+- ⚠️  Compact 格式变更（新增信息，不破坏现有脚本）
+
+**用户文档更新**:
+```markdown
+## work list - 列出所有 worktree
+
+**输出格式**:
+- Compact（默认）: 简洁格式，主目录显示完整路径
+- Table: 表格格式，所有 worktree 显示完整路径
+- JSON: 机器可读格式
+
+**示例**:
+```bash
+$ work list
+*⌂  worktree on 003-branch-slash-conversion (modified) at /Volumes/code/demos/worktree
+  feat-feature-001 on feat/feature-001
+```
+```
+
+**实施优先级**: P2（User Story 2 的增强，不阻塞 P1 功能）
+
+---
+
 ## 结论
 
-所有技术决策已明确，无遗留问题。可以进入 Phase 1（设计与契约）阶段。
+所有技术决策已明确，包括新增的主目录路径显示功能。无遗留问题，可以进入 Phase 1（设计与契约）阶段。

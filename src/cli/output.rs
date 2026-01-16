@@ -97,14 +97,22 @@ pub fn format_worktree_compact(worktrees: Vec<crate::core::worktree::Worktree>) 
             format!(" ({})", status_markers.join(", "))
         };
 
-        // 简化显示：目录名 + 分支 + 状态
+        // 主目录路径显示（仅主目录）
+        let path_info = if is_main {
+            format!(" at {}", wt.path.dimmed())
+        } else {
+            String::new()
+        };
+
+        // 简化显示：目录名 + 分支 + 状态 + 路径（主目录）
         output.push_str(&format!(
-            "{}{} {}{}{}\n",
+            "{}{} {}{}{}{}\n",
             current_marker,
             main_marker,
             name,
             branch_info,
-            status_marker
+            status_marker,
+            path_info
         ));
     }
 

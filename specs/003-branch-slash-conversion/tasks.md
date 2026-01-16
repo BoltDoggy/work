@@ -4,7 +4,7 @@
 **Date**: 2026-01-12
 **Spec**: [spec.md](./spec.md)
 **Plan**: [plan.md](./plan.md)
-**Total Tasks**: 38
+**Total Tasks**: 41 (38 original + 3 new for main directory path display)
 
 ---
 
@@ -146,12 +146,14 @@ ls -la ../repo.worktrees/  # should see main
 
 **Success Criteria**:
 - SC-003: 100% of worktree listings clearly show directory name and branch name relationship
+- **SC-006 (NEW)**: Main directory path is displayed 100% of the time in Compact format
 
 **Acceptance Scenarios**:
 1. Given worktree dirname `feat-feature-001` for branch `feat/feature-001`, When `work list`, Then output shows "feat-feature-001 on feat/feature-001"
 2. Given multiple slash-branch worktrees, When `work list`, Then all show correct dirname and branch pairs
+3. **(NEW)** Given main directory worktree, When `work list`, Then output shows " at /path/to/repo" suffix in gray color
 
-**Tasks**: 9
+**Tasks**: 12
 
 **Implementation**:
 
@@ -164,6 +166,9 @@ ls -la ../repo.worktrees/  # should see main
 - [x] T029 [US2] Test `work list` compact format output shows "feat-feature-001 on feat/feature-001" for slash branches
 - [x] T030 [US2] Test `work list -o table` shows separate Directory and Branch columns
 - [x] T031 [US2] Test `work list -o json` outputs `{"directory": "feat-feature-001", "branch": "feat/feature-001", ...}`
+- [x] **T039 [US2] [NEW]** Add main directory path display logic to `format_worktree_compact()` in src/cli/output.rs - append " at {path}" suffix for main directories (non-.worktrees)
+- [x] **T040 [US2] [NEW]** Apply gray color (dimmed) to path suffix in `format_worktree_compact()` in src/cli/output.rs using `.dimmed()` method
+- [x] **T041 [US2] [NEW]** Test `work list` compact format shows " at /path/to/repo" for main directory with gray color
 
 **Test This Phase**:
 ```bash

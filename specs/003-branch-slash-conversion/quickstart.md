@@ -597,12 +597,207 @@ echo "=== All Tests Passed ==="
 
 ---
 
+### Scenario 10: 主目录路径显示 (US2-P2 增强功能)
+
+**Objective**: 验证 `work list` 在 Compact 格式下显示主目录完整路径。
+
+**用户需求**: "work list 需要输出主目录的完整路径"
+
+**Steps**:
+
+1. 在主仓库目录创建分支：
+   ```bash
+   cd /tmp/work-test
+   git checkout -b feat/feature-001
+   ```
+
+2. 列出 worktree（默认 Compact 格式）：
+   ```bash
+   work list
+   ```
+
+3. 验证主目录显示路径：
+   ```bash
+   work list | grep "⌂" | grep "at /tmp/work-test"
+   ```
+
+**Expected Output** (Compact 格式):
+```text
+*⌂  worktree on feat/feature-001 (modified) at /tmp/work-test
+  feat-feature-001 on feat/feature-001 at /tmp/work-test.worktrees/feat-feature-001
+```
+
+**Expected Results**:
+- ✅ 主目录行包含 " at /tmp/work-test" 后缀（灰色显示）
+- ✅ worktree 目录行不包含路径（避免信息过载）
+- ✅ 路径使用完整绝对路径格式
+- ✅ 路径颜色为灰色（dimmed），不干扰主要信息
+
+**Success Criteria**:
+- SC-003: 100% 清晰显示主目录路径
+- 用户能在 3 秒内定位主仓库位置
+
+**Note**: Table 格式已包含 PATH 列，无需验证。
+
+---
+
+## Validation Checklist (Updated)
+
+### Functional Requirements
+
+- [ ] FR-001: 系统检测分支名中的斜杠
+- [ ] FR-002: 系统将所有 `/` 转换为 `-`
+- [ ] FR-003: 系统保持原始分支名不变
+- [ ] FR-004: 无斜杠分支名不进行转换
+- [ ] FR-005: 列出 worktree 时显示目录名和分支名
+- [ ] FR-006: 目录名符合文件系统规范
+- [ ] FR-007: 显示详情时提供目录名和分支名
+- [ ] FR-008: 检测并报告目录名冲突
+- [ ] FR-009: 支持多个连续斜杠
+- [ ] FR-010: 处理斜杠在开头或结尾
+- [ ] **FR-011 (NEW)**: Compact 格式显示主目录完整路径
+
+### Success Criteria
+
+- [ ] SC-001: 在 5 秒内成功创建 worktree
+- [ ] SC-002: 100% 正确转换目录名
+- [ ] SC-003: 100% 清晰显示目录名和分支名
+- [ ] SC-004: 100% 检测到命名冲突
+- [ ] SC-005: 解决 90% 以上的分支命名问题
+- [ ] **SC-006 (NEW)**: 主目录路径在 Compact 格式中 100% 显示
+
+---
+
+## Manual Testing Guide (Updated)
+
+### 4. 详情显示测试
+
+```bash
+# Human 格式
+work show feat-feature-001
+
+# JSON 格式
+work show feat-feature-001 -o json | jq '.branch'
+```
+
+### 5. 路径显示测试 (NEW)
+
+```bash
+# 测试主目录路径显示（Compact 格式）
+work list | grep "⌂" | grep " at "
+
+# 测试路径颜色（应该为灰色）
+# 注意：颜色代码需要在终端中手动验证
+
+# 测试 Table 格式路径（PATH 列）
+work list -o table
+
+# 测试 JSON 格式路径（path 字段）
+work list -o json | jq '.[] | select(.is_main == true) | .path'
+```
+
+---
+
+## Automation Script (Updated)
+
+```bash
+#!/bin/bash
+# tests/integration/slash_conversion.sh
+
+set -e
+
+echo "=== Testing Branch Slash Conversion ==="
+
+# Setup
+TEST_REPO="/tmp/work-test-$$"
+mkdir -p "$TEST_REPO"
+cd "$TEST_REPO"
+git init
+git config user.email "test@example.com"
+git config user.name "Test User"
+echo "test" > README.md
+git add README.md
+git commit -m "Initial commit"
+
+# Test 1: Single slash
+echo "Test 1: Single slash"
+git checkout -b feat/feature-001
+work add feat/feature-001
+if [ -d "$TEST_REPO.worktrees/feat-feature-001" ]; then
+    echo "✅ Directory created: feat-feature-001"
+else
+    echo "❌ Directory not created"
+    exit 1
+fi
+
+# Test 2: Multiple slashes
+echo "Test 2: Multiple slashes"
+git checkout -b feature/auth/oauth
+work add feature/auth/oauth
+if [ -d "$TEST_REPO.worktrees/feature-auth-oauth" ]; then
+    echo "✅ Directory created: feature-auth-oauth"
+else
+    echo "❌ Directory not created"
+    exit 1
+fi
+
+# Test 3: No slash
+echo "Test 3: No slash"
+git checkout -b main
+work add main
+if [ -d "$TEST_REPO.worktrees/main" ]; then
+    echo "✅ Directory created: main"
+else
+    echo "❌ Directory not created"
+    exit 1
+fi
+
+# Test 4: List output
+echo "Test 4: List output"
+OUTPUT=$(work list)
+if echo "$OUTPUT" | grep -q "feat-feature-001 on feat/feature-001"; then
+    echo "✅ Compact format shows directory and branch"
+else
+    echo "❌ Compact format incorrect"
+    exit 1
+fi
+
+# Test 5: Conflict detection
+echo "Test 5: Conflict detection"
+if work add feat/feature-001 2>&1 | grep -q "directory name conflict"; then
+    echo "✅ Conflict detected"
+else
+    echo "❌ Conflict not detected"
+    exit 1
+fi
+
+# Test 6: Main directory path display (NEW)
+echo "Test 6: Main directory path display"
+OUTPUT=$(work list)
+if echo "$OUTPUT" | grep "⌂" | grep -q " at $TEST_REPO"; then
+    echo "✅ Main directory path displayed"
+else
+    echo "❌ Main directory path not displayed"
+    echo "Output: $OUTPUT"
+    exit 1
+fi
+
+# Cleanup
+cd /
+rm -rf "$TEST_REPO"
+
+echo "=== All Tests Passed ==="
+```
+
+---
+
 ## Conclusion
 
-本文档提供了完整的集成测试场景，覆盖所有用户故事、功能需求和边界情况。实现完成后，应运行所有测试场景以验证功能的正确性。
+本文档提供了完整的集成测试场景，覆盖所有用户故事、功能需求和边界情况，包括新增的主目录路径显示功能。实现完成后，应运行所有测试场景以验证功能的正确性。
 
 **Next Steps**:
-1. 运行 `/speckit.tasks` 生成任务列表
-2. 实现功能
-3. 运行本文档中的所有测试场景
-4. 验证所有成功标准
+1. ✅ 规划完成（plan.md + research.md 已更新）
+2. 运行 `/speckit.tasks` 生成任务列表
+3. 实现功能（包括路径显示增强）
+4. 运行本文档中的所有测试场景
+5. 验证所有成功标准
