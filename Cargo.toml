@@ -1,6 +1,6 @@
 [package]
 name = "work"
-version = "0.1.8"
+version = "0.1.9"
 edition = "2021"
 description = "A CLI tool to simplify Git worktree management"
 authors = ["BoltDoggy <github@robolt.uu.me>"]
